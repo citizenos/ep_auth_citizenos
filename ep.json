@@ -1,0 +1,22 @@
+{
+  "parts": [
+    {
+      "name": "ep_auth_citizenos",
+      "client_hooks": {
+        "postToolbarInit": "ep_auth_citizenos/static/js/clientHooksUserList:postToolbarInit",
+        "userJoinOrUpdate": "ep_auth_citizenos/static/js/clientHooksUserList:userJoinOrUpdate",
+        "userLeave": "ep_auth_citizenos/static/js/clientHooksUserList:userLeave"
+      },
+      "hooks": {
+        "loadSettings": "ep_auth_citizenos/serverHooks:loadSettings",
+        "authorize": "ep_auth_citizenos/serverHooks:authorize",
+        "authFailure": "ep_auth_citizenos/serverHooks:authFailure",
+        "handleMessage": "ep_auth_citizenos/serverHooks:handleMessage",
+        "userLeave": "ep_auth_citizenos/serverHooks:userLeave",
+        "padInitToolbar": "ep_auth_citizenos/serverHooksUserList:padInitToolbar",
+        "eejsBlock_afterEditbar": "ep_auth_citizenos/serverHooksUserList:eejsBlock_afterEditbar",
+        "eejsBlock_styles": "ep_auth_citizenos/serverHooksUserList:eejsBlock_styles"
+      }
+    }
+  ]
+}

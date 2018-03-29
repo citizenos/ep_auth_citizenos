@@ -1,0 +1,10 @@
+# Created by .ignore support plugin (hsz.mobi)
+node_modules
+*.sublime-project
+*.sublime-workspace
+*.iws
+*.ipr
+*.iml
+*.swp
+/.idea/*
+*.log*
