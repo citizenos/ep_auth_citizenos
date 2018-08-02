@@ -120,12 +120,12 @@ exports.userJoinOrUpdate = function (hookName, args) {
     var $epCitizenOSUserList = $('#epCitizenOSUserList');
     var usersOnline = paduserlist.usersOnline();
 
-    var existingUser = _.find(usersOnline, function (user) {
+    var existingUser = usersOnline.find(function (user) {
         return user.userId === args.userInfo.userId;
     });
 
     if (!existingUser) {
-        // usersOnline does not return he user just joined when "userJoinOrUpdate" is triggered!
+        // usersOnline does not return the user just joined when "userJoinOrUpdate" is triggered!
         usersOnline = [args.userInfo].concat(usersOnline);
     }
 

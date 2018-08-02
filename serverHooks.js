@@ -86,7 +86,7 @@ function _handleTopicInfo (req, callback) {
  * @private
  */
 function _handleJWT (req) {
-    // JSON Web Token (JWT) passed by Toru
+    // JSON Web Token (JWT) passed by CitizenOS
     var token = req.query.jwt;
 
     // Initial request, the Pad is first opened with JWT
