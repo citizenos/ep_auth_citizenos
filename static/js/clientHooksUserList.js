@@ -4,6 +4,7 @@
 
 var paduserlist = require('ep_etherpad-lite/static/js/pad_userlist').paduserlist;
 var padutils = require('ep_etherpad-lite/static/js/pad_utils').padutils;
+var _ = require('ep_etherpad-lite/static/js/underscore');
 
 var renderUserCountElement = function () {
     $('#editbar [data-key=epCitizenOSUserListToggle] > a').append('<span id="epCitizenOSUserListToggleCount">1</span>');
