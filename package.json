@@ -1,16 +1,16 @@
 {
   "name": "ep_auth_citizenos",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "scripts": {
     "prepush": "grunt eslint"
   },
   "dependencies": {
-    "async": "^1.5.0",
+    "async": "1.5.0",
     "async-stacktrace": "0.0.2",
-    "jsonwebtoken": "^5.4.1",
-    "lodash": "^3.10.1",
-    "superagent": "1.8.3"
+    "jsonwebtoken": "5.4.1",
+    "lodash": "4.17.10",
+    "superagent": "3.7.0"
   },
   "devDependencies": {
     "grunt": "1.0.2",
