@@ -123,8 +123,10 @@ exports.userJoinOrUpdate = function (hookName, args) {
     usersOnline.some(function (user) {
         if (user.userId === args.userInfo.userId) {
             existingUser = user;
+
             return true; //break
         }
+
         return false;
     });
 
