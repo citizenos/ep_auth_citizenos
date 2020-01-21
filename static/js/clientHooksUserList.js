@@ -119,9 +119,16 @@ exports.postToolbarInit = function (hookName, args) {
 exports.userJoinOrUpdate = function (hookName, args) {
     var $epCitizenOSUserList = $('#epCitizenOSUserList');
     var usersOnline = paduserlist.usersOnline();
+    var existingUser;
 
-    var existingUser = usersOnline.find(function (user) {
-        return user.userId === args.userInfo.userId;
+    usersOnline.some(function (user) {
+        if (user.userId === args.userInfo.userId) {
+            existingUser = user;
+
+            return true; //break
+        }
+
+        return false;
     });
 
     if (!existingUser) {
