@@ -392,20 +392,22 @@ exports.handleMessage = function (hook, context, cb) {
         // Pull some magic tricks to reuse same authorID for different tokens.
         if (userId) {
             logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
-            authorManager.createAuthorIfNotExistsFor(userId, displayName, function (err, res) {
-                if (err) {
+            authorManager
+                .createAuthorIfNotExistsFor(userId, displayName)
+                .then(function (res) {
+                    var userAuthorId = res.authorID;
+
+                    // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
+                    db.set('token2author:' + token, userAuthorId);
+                    logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
+
+                    return cb([message]);
+                })
+                .catch(function (err) {
                     logger.error('Failed to update User info', err);
 
                     return cb([null]);
-                }
-                var userAuthorId = res.authorID;
-
-                // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
-                db.set('token2author:' + token, userAuthorId);
-                logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
-
-                return cb([message]);
-            });
+                });
         } else {
             return cb([message]);
         }
