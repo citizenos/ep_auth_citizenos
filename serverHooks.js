@@ -66,7 +66,7 @@ function _handleTopicInfo (req, callback) {
 
                 return callback();
             })
-            .catch(function (err) {
+            .catch(function () {
                 return callback();
             });
     } else {
