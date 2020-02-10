@@ -9,7 +9,7 @@
     "async": "1.5.0",
     "async-stacktrace": "0.0.2",
     "jsonwebtoken": "5.4.1",
-    "lodash": "4.17.15",
+    "lodash": "4.17.13",
     "superagent": "3.7.0"
   },
   "devDependencies": {
