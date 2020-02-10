@@ -57,17 +57,18 @@ function _handleTopicInfo (req, callback) {
     var roMatches = req.path.match(/\/p\/(r\.[\w]*)/);
     if (roMatches && roMatches.length > 1) {
         var roId = roMatches[1];
-        API.getPadID(roId, function (err, padIDResult) {
-            if (err) {
+
+        API.getPadID(roId)
+            .then(function (padIDResult) {
+                req.session.topic = {
+                    id: padIDResult.padID
+                };
+
                 return callback();
-            }
-
-            req.session.topic = {
-                id: padIDResult.padID
-            };
-
-            return callback();
-        });
+            })
+            .catch(function () {
+                return callback();
+            });
     } else {
         logger.warn('Was not able to find Topic id for path', req.path);
         delete req.session.topic;
@@ -295,26 +296,27 @@ exports.authorize = function (hook, context, cb) {
                         return cb([true]);
                     } else {
                         // Redirect to read-only version of the pad
-                        API.getReadOnlyID(topicId, function (err, readOnlyResult) {
-                            var roPadID = readOnlyResult.readOnlyID;
-                            if (err || !roPadID) {
-                                logger.error('Error while getting read-only Pad ID.  Access denied!');
+                        API.getReadOnlyID(topicId)
+                            .then(function (readOnlyResult) {
+                                var roPadID = readOnlyResult.readOnlyID;
+
+                                var roPadPath = '/p/' + roPadID;
+
+                                // Pass on all frame parameters to the read-only url so that themes and translations would work
+                                var parts = req.originalUrl.split('?');
+                                if (parts && parts.length > 1) {
+                                    roPadPath += '?' + parts[1];
+                                }
+
+                                logger.debug('Read only access. Redirecting to', roPadPath);
+
+                                return res.redirect(302, roPadPath);
+                            })
+                            .catch(function (err) {
+                                logger.error('Error while getting read-only Pad ID.  Access denied!', err);
 
                                 return cb([false]);
-                            }
-
-                            var roPadPath = '/p/' + roPadID;
-
-                            // Pass on all frame parameters to the read-only url so that themes and translations would work
-                            var parts = req.originalUrl.split('?');
-                            if (parts && parts.length > 1) {
-                                roPadPath += '?' + parts[1];
-                            }
-
-                            logger.debug('Read only access. Redirecting to', roPadPath);
-
-                            return res.redirect(302, roPadPath);
-                        });
+                            });
                     }
                 } else { // User has no permissions
                     logger.warn('User has no permissions to access the Pad. Access denied!');
@@ -392,20 +394,22 @@ exports.handleMessage = function (hook, context, cb) {
         // Pull some magic tricks to reuse same authorID for different tokens.
         if (userId) {
             logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
-            authorManager.createAuthorIfNotExistsFor(userId, displayName, function (err, res) {
-                if (err) {
+            authorManager
+                .createAuthorIfNotExistsFor(userId, displayName)
+                .then(function (res) {
+                    var userAuthorId = res.authorID;
+
+                    // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
+                    db.set('token2author:' + token, userAuthorId);
+                    logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
+
+                    return cb([message]);
+                })
+                .catch(function (err) {
                     logger.error('Failed to update User info', err);
 
                     return cb([null]);
-                }
-                var userAuthorId = res.authorID;
-
-                // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
-                db.set('token2author:' + token, userAuthorId);
-                logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
-
-                return cb([message]);
-            });
+                });
         } else {
             return cb([message]);
         }
