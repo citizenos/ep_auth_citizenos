@@ -1,6 +1,6 @@
 'use strict';
 
-/* global $, _, clientVars */
+/* global $, clientVars */
 
 var paduserlist = require('ep_etherpad-lite/static/js/pad_userlist').paduserlist;
 var padutils = require('ep_etherpad-lite/static/js/pad_utils').padutils;
