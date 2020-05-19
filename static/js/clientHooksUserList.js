@@ -1,6 +1,6 @@
 'use strict';
 
-/* global $, clientVars */
+/* global $, clientVars, window*/
 
 var paduserlist = require('ep_etherpad-lite/static/js/pad_userlist').paduserlist;
 var padutils = require('ep_etherpad-lite/static/js/pad_utils').padutils;
@@ -69,7 +69,7 @@ var renderUserList = function (userList) {
         }
     });
 
-    list += '<li class="epCitizenOSUserListAnonymous">' + _('epCitizenOSUserList.userList.text.anonymous', {count: countAnonymous}) + '</li>';
+    list += '<li class="epCitizenOSUserListAnonymous">' + window._('epCitizenOSUserList.userList.text.anonymous', {count: countAnonymous}) + '</li>';
     list += '</ul>';
 
     $epCitizenOSUserList.html(list);
