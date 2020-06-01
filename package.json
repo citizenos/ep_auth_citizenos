@@ -13,8 +13,8 @@
     "superagent": "5.2.2"
   },
   "devDependencies": {
-    "grunt": "1.0.2",
-    "grunt-eslint": "20.1.0",
-    "husky": "0.14.3"
+    "grunt": "1.1.0",
+    "grunt-eslint": "23.0.0",
+    "husky": "4.2.5"
   }
 }
