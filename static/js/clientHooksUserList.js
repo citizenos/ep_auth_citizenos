@@ -31,7 +31,7 @@ var renderUserList = function (userList) {
     var $epCitizenOSUserList = $('#epCitizenOSUserList');
     var colorPalette = clientVars.colorPalette; // colorId is index of the actual color code
 
-    var list = '<ul>';
+    var list = '<ul class="popup-content">';
     var countAnonymous = 0;
 
     userList.forEach(function (user) {
@@ -100,9 +100,11 @@ exports.postToolbarInit = function (hookName, args) {
         var isVisibleUserList = $epCitizenOSUserList.is(':visible');
         if (isVisibleUserList) {
             $epCitizenOSUserList.hide();
+            $epCitizenOSUserList.removeClass('popup-show');
         } else {
             renderUserList(paduserlist.usersOnline());
             $epCitizenOSUserList.show();
+            $epCitizenOSUserList.addClass('popup-show');
         }
     });
 };

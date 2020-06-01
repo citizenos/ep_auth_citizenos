@@ -1,17 +1,13 @@
 #editbar #epCitizenOSUserListToggleCount {
-    position: relative;
     font-size: 1.1em;
     top: 2px;
-    padding-left: 2px;
+    padding: 10px;
     color: #777;
 }
 
 #epCitizenOSUserList {
-    font-size: 1.5em;
     line-height: 1.625em;
     position: absolute;
-    right: 20px; /** TODO: Consider button location? **/
-    width: 150px;
     display: none;
 }
 
