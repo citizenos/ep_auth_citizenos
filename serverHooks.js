@@ -351,6 +351,29 @@ exports.authFailure = function (hook, context, cb) {
     return cb([true]);
 };
 
+var _syncAuthorData = async function (authorData) {
+    var apiKey = _.get(pluginSettings, 'authorization.apiKey');
+    var caCert = pluginSettings.authorization.caCert;
+
+    var authorSyncUrl = pluginSettings.authorSync.url;
+    var apiKey = pluginSettings.authorization.apiKey;
+
+    var path = authorSyncUrl.replace(':userId', authorData.userId);
+
+
+
+    var req = request.put(path)
+
+    if (caCert) {
+        req.ca(caCert);
+    }
+    req
+        .set('X-API-KEY', apiKey)
+        .send(authorData)
+        .end(function (err, res) {
+            console.log(err, res);
+        })
+}
 /**
  * handleMessage hook
  *
@@ -398,6 +421,7 @@ exports.handleMessage = function (hook, context, cb) {
                 .createAuthorIfNotExistsFor(userId, displayName)
                 .then(function (res) {
                     var userAuthorId = res.authorID;
+                    _syncAuthorData({userId, authorID: userAuthorId});
 
                     // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
                     db.set('token2author:' + token, userAuthorId);
