@@ -12,7 +12,7 @@
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_padinittoolbar}
  */
-exports.padInitToolbar = function (hookName, args) {
+exports.padInitToolbar = function (hookName, args, cb) {
     var toolbar = args.toolbar;
 
     var button = toolbar.button({
@@ -22,6 +22,8 @@ exports.padInitToolbar = function (hookName, args) {
     });
 
     toolbar.registerButton('epCitizenOSUserListToggle', button);
+
+    return cb();
 };
 
 /**
