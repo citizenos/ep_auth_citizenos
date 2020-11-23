@@ -9,8 +9,11 @@
       },
       "hooks": {
         "loadSettings": "ep_auth_citizenos/serverHooks:loadSettings",
+        "clientVars":"ep_auth_citizenos/serverHooks:clientVars",
+        "authenticate": "ep_auth_citizenos/serverHooks:authenticate",
         "authorize": "ep_auth_citizenos/serverHooks:authorize",
-        "authFailure": "ep_auth_citizenos/serverHooks:authFailure",
+        "authzFailure": "ep_auth_citizenos/serverHooks:authzFailure",
+        "authnFailure": "ep_auth_citizenos/serverHooks:authnFailure",
         "handleMessage": "ep_auth_citizenos/serverHooks:handleMessage",
         "userLeave": "ep_auth_citizenos/serverHooks:userLeave",
         "padInitToolbar": "ep_auth_citizenos/serverHooksUserList:padInitToolbar",

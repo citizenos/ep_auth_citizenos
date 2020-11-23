@@ -2,18 +2,18 @@
 
 /* global $, clientVars, window*/
 
-var paduserlist = require('ep_etherpad-lite/static/js/pad_userlist').paduserlist;
-var padutils = require('ep_etherpad-lite/static/js/pad_utils').padutils;
+const paduserlist = require('ep_etherpad-lite/static/js/pad_userlist').paduserlist;
+const padutils = require('ep_etherpad-lite/static/js/pad_utils').padutils;
 
-var renderUserCountElement = function () {
+const renderUserCountElement = function () {
     $('#editbar [data-key=epCitizenOSUserListToggle] > a').append('<span id="epCitizenOSUserListToggleCount">1</span>');
 };
 
-var isUserCountElement = function () {
+const isUserCountElement = function () {
     return $('#epCitizenOSUserListToggleCount').length > 0;
 };
 
-var renderUserCount = function (count) {
+const renderUserCount = function (count) {
     if (!isUserCountElement()) { // Does not exist, add it. That is on initial load of the page
         renderUserCountElement();
     }
@@ -27,17 +27,17 @@ var renderUserCount = function (count) {
  *
  * @returns {void}
  */
-var renderUserList = function (userList) {
-    var $epCitizenOSUserList = $('#epCitizenOSUserList');
-    var colorPalette = clientVars.colorPalette; // colorId is index of the actual color code
+const renderUserList = function (userList) {
+    const $epCitizenOSUserList = $('#epCitizenOSUserList');
+    const colorPalette = clientconsts.colorPalette; // colorId is index of the actual color code
 
-    var list = '<ul class="popup-content">';
-    var countAnonymous = 0;
+    let list = '<ul class="popup-content">';
+    let countAnonymous = 0;
 
     userList.forEach(function (user) {
         if (user.name) {
-            var li;
-            var color = colorPalette[user.colorId];
+            let li;
+            let color = colorPalette[user.colorId];
 
             if (!color) { // Did not find from palette, so it's not a palette color
                 color = String(user.colorId); // Cast to string
@@ -88,8 +88,8 @@ var renderUserList = function (userList) {
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_editbar}
  */
 exports.postToolbarInit = function (hookName, args) {
-    var editbar = args.toolbar; // toolbar is actually editbar - http://etherpad.org/doc/v1.5.7/#index_editbar
-    var $epCitizenOSUserList = $('#epCitizenOSUserList');
+    const editbar = args.toolbar; // toolbar is actually editbar - http://etherpad.org/doc/v1.5.7/#index_editbar
+    const $epCitizenOSUserList = $('#epCitizenOSUserList');
 
     // We don't want to overwrite the count if it is populated by the "userJoinOrUpdate" hook
     if (!isUserCountElement()) {
@@ -97,7 +97,7 @@ exports.postToolbarInit = function (hookName, args) {
     }
 
     editbar.registerCommand('epCitizenOSUserListToggle', function () {
-        var isVisibleUserList = $epCitizenOSUserList.is(':visible');
+        const isVisibleUserList = $epCitizenOSUserList.is(':visible');
         if (isVisibleUserList) {
             $epCitizenOSUserList.hide();
             $epCitizenOSUserList.removeClass('popup-show');
@@ -118,9 +118,9 @@ exports.postToolbarInit = function (hookName, args) {
  * @returns {void}
  */
 exports.userJoinOrUpdate = function (hookName, args) {
-    var $epCitizenOSUserList = $('#epCitizenOSUserList');
-    var usersOnline = paduserlist.usersOnline();
-    var existingUser;
+    const $epCitizenOSUserList = $('#epCitizenOSUserList');
+    const usersOnline = paduserlist.usersOnline();
+    let existingUser;
 
     usersOnline.some(function (user) {
         if (user.userId === args.userInfo.userId) {
@@ -152,8 +152,8 @@ exports.userJoinOrUpdate = function (hookName, args) {
  * @returns {void}
  */
 exports.userLeave = function () {
-    var $epCitizenOSUserList = $('#epCitizenOSUserList');
-    var usersOnline = paduserlist.usersOnline();
+    const $epCitizenOSUserList = $('#epCitizenOSUserList');
+    const usersOnline = paduserlist.usersOnline();
 
     renderUserCount(usersOnline.length);
 

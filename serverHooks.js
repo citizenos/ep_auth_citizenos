@@ -11,6 +11,7 @@ const pluginSettings = settings[PLUGIN_NAME];
 const db = require('ep_etherpad-lite/node/db/DB').db;
 const API = require('ep_etherpad-lite/node/db/API');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
+const padMessageHandler = require('ep_etherpad-lite/node/handler/PadMessageHandler');
 const logger = require('ep_etherpad-lite/node_modules/log4js').getLogger(PLUGIN_NAME);
 
 // Permission cache
@@ -253,19 +254,10 @@ exports.loadSettings = function () {
         process.exit(1);
     }
 };
-
-/**
- * authorize hook
- *
- * @param {string} hook "authorize"
- * @param {object} context Context
- * @param {function} cb Function cb([thouShallPass]) where thouShallPass is true or false depending if authorized or not.
- *
- * @returns {void}
- *
- * @see {@link http://etherpad.org/doc/v1.5.7/#index_authorize}
- */
-exports.authorize = async function (hook, context, cb) {
+exports.authenticate = async function (hook, context, cb) {
+    if (!context.users) {
+        context.users = {};
+    }
     const req = context.req;
     const res = context.res;
 
@@ -282,6 +274,27 @@ exports.authorize = async function (hook, context, cb) {
         // Delete EP long lasting 'token' cookie to force into creating a new one before sending CLIENT_READY.
         // Use short living tokens. Every time User visits, a new one is created. When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
     res.clearCookie('token');
+
+    if (context.req.session.user) {
+        context.users[context.req.session.user.name]  = context.req.session.user;
+        return cb([true]);
+    }
+    return cb([false]);
+}
+/**
+ * authorize hook
+ *
+ * @param {string} hook "authorize"
+ * @param {object} context Context
+ * @param {function} cb Function cb([thouShallPass]) where thouShallPass is true or false depending if authorized or not.
+ *
+ * @returns {void}
+ *
+ * @see {@link http://etherpad.org/doc/v1.5.7/#index_authorize}
+ */
+exports.authorize = async function (hook, context, cb) {
+    const req = context.req;
+    const res = context.res;
 
     // Handover has completed and from here on we check for permissions by calling Toru API.
     // This is to ensure that if permissions change in Toru system, we act accordingly in EP
@@ -307,7 +320,7 @@ exports.authorize = async function (hook, context, cb) {
                 const readOnlyResult = await API.getReadOnlyID(topicId);
                 const roPadID = readOnlyResult.readOnlyID;
 
-                const roPadPath = '/p/' + roPadID;
+                let roPadPath = '/p/' + roPadID;
 
                 // Pass on all frame parameters to the read-only url so that themes and translations would work
                 const parts = req.originalUrl.split('?');
@@ -344,7 +357,15 @@ exports.authorize = async function (hook, context, cb) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_authfailure}
  */
-exports.authFailure = function (hook, context, cb) {
+exports.authzFailure = function (hook, context, cb) {
+    logger.debug('authFailure');
+    const res = context.res;
+    res.status(403).send('Authentication required');
+
+    return cb([true]);
+};
+
+exports.authnFailure = function (hook, context, cb) {
     logger.debug('authFailure');
     const res = context.res;
     res.status(401).send('Authentication required');
@@ -381,7 +402,7 @@ const _syncAuthorData = async function (authorData) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_handlemessage}
  */
-exports.handleMessage = async function (hook, context, cb) {
+exports.handleMessage = async function (hook, context) {
     // All other messages have to go through authorization
     const client = context.client;
     const message = context.message;
@@ -391,58 +412,57 @@ exports.handleMessage = async function (hook, context, cb) {
     const token = message.token;
 
     logger.debug('handleMessage', context.message, session.id);
-
     // Disable editing user info
-    if (context.message.type === 'COLLABROOM' && context.message.data.type === 'USERINFO_UPDATE') {
+    if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
         logger.debug('handleMessage', 'Not allowing USERINFO_UPDATE update, don\'t want users changing their names.');
 
-        return cb([null]);
+        return [null];
     }
 
     if (!topicId) {
         logger.debug('handleMessage', 'Message dropped cause there is no session info');
         client.json.send({accessStatus: 'deny'});
 
-        return cb([null]);
+        return [null];
     }
 
     // Client ready is always allowed
     if (context.message.type === 'CLIENT_READY') {
         const displayName = _.get(session, 'user.name');
-
         // Pull some magic tricks to reuse same authorID for different tokens.
         if (userId) {
             try {
                 logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
                 const res = await authorManager.createAuthorIfNotExistsFor(userId, displayName);
                 const userAuthorId = res.authorID;
+                session.authorID = userAuthorId;
                 _syncAuthorData({userId, authorID: userAuthorId});
-
+                padMessageHandler.sessioninfos[client.id].author = userAuthorId;
                 // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
                 db.set('token2author:' + token, userAuthorId);
                 logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
 
-                return cb([message]);
+                return [message];
             } catch(err) {
                 logger.error('Failed to update User info', err);
 
-                return cb([null]);
+                return [null];
             };
         } else {
-            return cb([message]);
+            return [message];
         }
     } else {
         const level = await _getTopicPermissions(topicId, userId, false);
 
         if (['admin', 'edit'].indexOf(level) > -1) {
-            return cb([message]);
+            return [message];
         } else if (level === 'read' && context.message.type === 'CHANGESET_REQ') { // Changeset requests are allowed for read level
-            return cb([message]);
+            return [message];
         } else {
             logger.debug('handleMessage', 'User is not allowed to post to this pad. The level was', level, 'Access denied!');
             client.json.send({accessStatus: 'deny'}); // Send deny message, so that UI would throw "no permissions" error
 
-            return cb([null]);
+            return [null];
         }
     }
 };
@@ -471,4 +491,10 @@ exports.userLeave = function (hook, session, callback) {
 
         return callback();
     }
+};
+
+exports.clientVars = async (hookName, context) => {
+    const authorId = context.socket.client.request.session.authorID;
+
+    return {'userId': authorId}
 };
