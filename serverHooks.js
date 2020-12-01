@@ -26,9 +26,7 @@ const permissionCache = {};
  *
  * @private
  */
-function _getDbKeyForToken (token) {
-    return 'token2author:' + token;
-}
+const _getDbKeyForToken = (token) => `token2author:${token}`;
 
 
 /**
@@ -37,47 +35,44 @@ function _getDbKeyForToken (token) {
  * If it's a read-only Pad link, the Topic ID is looked up from read-only ID
  *
  * @param {object} req Express Request object
- * @param {function} callback Callback function
  *
  * @returns {void}
  *
  * @private
  */
-async function _handleTopicInfo (req) {
-    return new Promise (async function (resolve) {
-        // Pad name === topicId, lets try to get it from the url
-        const matches = req.path.match(/\/p\/([\w]{8}-[\w]{4}-[\w]{4}-[\w]{4}-[\w]{12})/);
-        if (matches && matches.length > 1) {
-            req.session.topic = {
-                id: matches[1]
-            };
+const _handleTopicInfo = async (req) => {
+  // Pad name === topicId, lets try to get it from the url
+  const matches = req.path.match(/\/p\/([\w]{8}-[\w]{4}-[\w]{4}-[\w]{4}-[\w]{12})/);
+  if (matches && matches.length > 1) {
+    req.session.topic = {
+      id: matches[1],
+    };
 
-            return resolve();
-        }
+    return true;
+  }
 
-        // Must be read-only pad, let's find Pad id from read-only ID
-        const roMatches = req.path.match(/\/p\/(r\.[\w]*)/);
-        if (roMatches && roMatches.length > 1) {
-            const roId = roMatches[1];
-            try {
-                const padIDResult = await API.getPadID(roId);
+  // Must be read-only pad, let's find Pad id from read-only ID
+  const roMatches = req.path.match(/\/p\/(r\.[\w]*)/);
+  if (roMatches && roMatches.length > 1) {
+    const roId = roMatches[1];
+    try {
+      const padIDResult = await API.getPadID(roId);
 
-                req.session.topic = {
-                    id: padIDResult.padID
-                };
+      req.session.topic = {
+        id: padIDResult.padID,
+      };
 
-                return resolve();
-            } catch {
-                return resolve();
-            };
-        } else {
-            logger.warn('Was not able to find Topic id for path', req.path);
-            delete req.session.topic;
+      return true;
+    } catch (err) {
+      logger.error(err);
+    }
+  } else {
+    logger.warn('Was not able to find Topic id for path', req.path);
+    delete req.session.topic;
 
-            return resolve();
-        }
-    });
-}
+    return true;
+  }
+};
 
 /**
  * Handle JWT
@@ -88,39 +83,43 @@ async function _handleTopicInfo (req) {
  *
  * @private
  */
-function _handleJWT (req) {
-    // JSON Web Token (JWT) passed by CitizenOS
-    const token = req.query.jwt;
-    let tokenPayload;
-    // Initial request, the Pad is first opened with JWT
-    if (token) {
-        try {
-            tokenPayload = jwt.verify(token, pluginSettings.jwt.publicKey, {algorithms: pluginSettings.jwt.algorithms});
-        } catch (err) {
-            if (err.name === 'TokenExpiredError') {
-                // It's ok when for example navigating from timeline view back to Pad. It calls history back, thus
-                // FIXME: That just makes token expiry pointless anyway..
-                logger.info('JWT verification failed', err, req.path);
+const _handleJWT = (req) => {
+  // JSON Web Token (JWT) passed by CitizenOS
+  const token = req.query.jwt;
+  let tokenPayload;
+  // Initial request, the Pad is first opened with JWT
+  if (token) {
+    try {
+      tokenPayload = jwt.verify(token,
+          pluginSettings.jwt.publicKey,
+          {algorithms: pluginSettings.jwt.algorithms}
+      );
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        // It's ok when for example navigating from timeline view back to Pad.
+        // It calls history back, thus
+        // FIXME: That just makes token expiry pointless anyway..
+        logger.info('JWT verification failed', err, req.path);
 
-                return;
-            }
-            logger.error('JWT verification failed', err, req.path);
+        return;
+      }
+      logger.error('JWT verification failed', err, req.path);
 
-            return;
-        }
-
-        const userId = _.get(tokenPayload, 'user.id');
-
-        if (userId) {
-            req.session.user = tokenPayload.user;
-            logger.debug('JWT payload was fine.', tokenPayload);
-        } else {
-            logger.error('JWT payload is missing required data.', tokenPayload);
-        }
+      return;
     }
 
-    logger.debug('No JWT provided');
-}
+    const userId = _.get(tokenPayload, 'user.id');
+
+    if (userId) {
+      req.session.user = tokenPayload.user;
+      logger.debug('JWT payload was fine.', tokenPayload);
+    } else {
+      logger.error('JWT payload is missing required data.', tokenPayload);
+    }
+  }
+
+  logger.debug('No JWT provided');
+};
 
 /**
  * Get Topic permission level
@@ -136,84 +135,82 @@ function _handleJWT (req) {
  *
  * @private
  */
-async function _getTopicPermissions (topicId, userId, ignoreCache) {
-    return new Promise (async function (resolve) {
-        if (!topicId) {
-            logger.debug('_getTopicPermissions', 'No Topic ID provided.');
+const _getTopicPermissions = async (topicId, userId, ignoreCache) => {
+  if (!topicId) {
+    logger.debug('_getTopicPermissions', 'No Topic ID provided.');
 
-            return resolve('none');
-        }
+    return 'none';
+  }
 
-        const authorizationUrl = pluginSettings.authorization.url;
-        const cacheMaxAge = pluginSettings.authorization.cacheMaxAge;
-        const apiKey = pluginSettings.authorization.apiKey;
-        const caCert = pluginSettings.authorization.caCert;
+  const authorizationUrl = pluginSettings.authorization.url;
+  const cacheMaxAge = pluginSettings.authorization.cacheMaxAge;
+  const apiKey = pluginSettings.authorization.apiKey;
+  const caCert = pluginSettings.authorization.caCert;
 
-        const path = authorizationUrl.replace(':topicId', topicId);
+  const path = authorizationUrl.replace(':topicId', topicId);
 
-        const query = {};
+  const query = {};
 
-        if (userId) {
-            query.userId = userId;
-        }
+  if (userId) {
+    query.userId = userId;
+  }
 
-        let cacheKey;
+  let cacheKey;
 
-        // If there is no userId, there is no caching. It is not needed as the handleMessage authorization for messages which have userId
-        if (!ignoreCache && topicId && userId) {
-            cacheKey = topicId + '$' + userId;
-        }
+  // If there is no userId, there is no caching.
+  // It is not needed as the handleMessage authorization for messages which have userId
+  if (!ignoreCache && topicId && userId) {
+    cacheKey = `${topicId}$${userId}`;
+  }
 
-        // Check for cache, no cache if there is no userId.
-        if (cacheKey) {
-            const cacheValue = _.get(permissionCache[cacheKey], 'value');
-            const cacheTimestamp = _.get(permissionCache[cacheKey], 'timestamp');
+  // Check for cache, no cache if there is no userId.
+  if (cacheKey) {
+    const cacheValue = _.get(permissionCache[cacheKey], 'value');
+    const cacheTimestamp = _.get(permissionCache[cacheKey], 'timestamp');
 
-            if (cacheTimestamp && (cacheTimestamp + cacheMaxAge > new Date().getTime())) {
-                logger.debug('_getTopicPermissions', 'Cache hit for key', cacheKey);
+    if (cacheTimestamp && (cacheTimestamp + cacheMaxAge > new Date().getTime())) {
+      logger.debug('_getTopicPermissions', 'Cache hit for key', cacheKey);
 
-                return resolve(cacheValue);
-            } else {
-                logger.debug('_getTopicPermissions', 'Cache miss for key', cacheKey);
-            }
-        }
+      return cacheValue;
+    } else {
+      logger.debug('_getTopicPermissions', 'Cache miss for key', cacheKey);
+    }
+  }
 
-        const req = request.get(path);
-        if (caCert) {
-            req.ca(caCert);
-        }
-        try {
-            const res = await req
-                .set('X-API-KEY', apiKey)
-                .query(query);
+  const req = request.get(path);
+  if (caCert) {
+    req.ca(caCert);
+  }
+  try {
+    const res = await req
+        .set('X-API-KEY', apiKey)
+        .query(query);
 
-            const level = _.get(res, 'body.data.level');
-            if (!level) {
-                logger.error('Authorization API did not return permission level. Access denied!', res.body);
+    const level = _.get(res, 'body.data.level');
+    if (!level) {
+      logger.error('Authorization API did not return permission level. Access denied!', res.body);
 
-                return resolve('none');
-            }
+      return 'none';
+    }
 
-            // Add result to cache
-            if (cacheKey) {
-                logger.debug('Refresh cache!', cacheKey);
-                permissionCache[cacheKey] = {
-                    value: level,
-                    timestamp: new Date().getTime()
-                };
-            }
+    // Add result to cache
+    if (cacheKey) {
+      logger.debug('Refresh cache!', cacheKey);
+      permissionCache[cacheKey] = {
+        value: level,
+        timestamp: new Date().getTime(),
+      };
+    }
 
-            return resolve(level);
-        } catch (err) {
-            if (err) {
-                logger.error('Authorization API returned an error. Access denied!', err);
+    return level;
+  } catch (err) {
+    if (err) {
+      logger.error('Authorization API returned an error. Access denied!', err);
 
-                return resolve('none');
-            }
-        }
-
-    });
-}
+      return 'none';
+    }
+  }
+};
 
 /**
  * loadSettings hook
@@ -224,124 +221,142 @@ async function _getTopicPermissions (topicId, userId, ignoreCache) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_loadsettings}
  */
-exports.loadSettings = function () {
-    const authorizationUrl = _.get(pluginSettings, 'authorization.url');
-    const cacheMaxAge = _.get(pluginSettings, 'authorization.cacheMaxAge');
-    const apiKey = _.get(pluginSettings, 'authorization.apiKey');
+exports.loadSettings = (hook, context, cb) => {
+  const authorizationUrl = _.get(pluginSettings, 'authorization.url');
+  const cacheMaxAge = _.get(pluginSettings, 'authorization.cacheMaxAge');
+  const apiKey = _.get(pluginSettings, 'authorization.apiKey');
 
-    if (!authorizationUrl || !cacheMaxAge || !_.isFinite(cacheMaxAge) || !apiKey) {
-        logger.error('Invalid configuration! Missing authorization.url or authorization.cacheMaxAge or authorization.apiKey! Please check EP settings.json.', pluginSettings);
-        process.exit(1);
-    }
+  if (!authorizationUrl || !cacheMaxAge || !_.isFinite(cacheMaxAge) || !apiKey) {
+    const invalidConfErr = `Invalid configuration! Missing authorization.url or
+    authorization.cacheMaxAge or
+    authorization.apiKey! Please check EP settings.json.`;
+    logger.error(invalidConfErr, pluginSettings);
+    throw new Error(invalidConfErr);
+  }
 
-    const caCert = _.get(pluginSettings, 'authorization.caCert');
-    if (caCert) {
-        if (caCert.indexOf('-----BEGIN CERTIFICATE-----') !== 0) {
-            logger.error('Invalid configuration! If you provide authorization.caCert, make sure it looks like a cert.');
-            process.exit(1);
-        }
+  const caCert = _.get(pluginSettings, 'authorization.caCert');
+  if (caCert) {
+    if (caCert.indexOf('-----BEGIN CERTIFICATE-----') !== 0) {
+      const invalidCertErr = `Invalid configuration!
+      If you provide authorization.caCert, make sure it looks like a cert.`;
+      logger.error(invalidCertErr);
+      throw new Error(invalidCertErr);
     }
+  }
 
-    const jwtPublicKey = _.get(pluginSettings, 'jwt.publicKey');
-    if (!jwtPublicKey || jwtPublicKey.indexOf('PUBLIC KEY') < 0) {
-        logger.error('Invalid configuration!. Missing JWT public key (ep_auth_citizenos.jwt.publicKey)! Please check your EP settings.json.', pluginSettings);
-        process.exit(1);
-    }
+  const jwtPublicKey = _.get(pluginSettings, 'jwt.publicKey');
+  if (!jwtPublicKey || jwtPublicKey.indexOf('PUBLIC KEY') < 0) {
+    const missingJWTpubKey = `Invalid configuration!.
+    Missing JWT public key (ep_auth_citizenos.jwt.publicKey)! Please check your EP settings.json.`;
+    logger.error(missingJWTpubKey, pluginSettings);
+    throw new Error(missingJWTpubKey);
+  }
 
-    const jwtAlgorithms = _.get(pluginSettings, 'jwt.algorithms');
-    if (!jwtAlgorithms || !Array.isArray(jwtAlgorithms)) {
-        logger.error('Invalid configuration! Missing JWT algorithm (ep_auth_citizenos.jwt.algorithms)! Please check your EP settings.json', pluginSettings);
-        process.exit(1);
-    }
+  const jwtAlgorithms = _.get(pluginSettings, 'jwt.algorithms');
+  if (!jwtAlgorithms || !Array.isArray(jwtAlgorithms)) {
+    const missingJWTAlgo = `Invalid configuration!
+    Missing JWT algorithm (ep_auth_citizenos.jwt.algorithms)! Please check your EP settings.json`;
+    logger.error(missingJWTAlgo, pluginSettings);
+    throw new Error(missingJWTAlgo);
+  }
+
+  return cb();
 };
-exports.authenticate = async function (hook, context, cb) {
-    if (!context.users) {
-        context.users = {};
-    }
-    const req = context.req;
-    const res = context.res;
+exports.authenticate = async (hook, context, cb) => {
+  if (!context.users) {
+    context.users = {};
+  }
+  const req = context.req;
+  const res = context.res;
 
-    // Skip authorization for some paths...
-    if (req.path.match(/^\/(jserror|favicon|locales|static|javascripts|pluginfw|api)/)) return cb([true]);
+  // Skip authorization for some paths...
+  if (req.path.match(/^\/(jserror|favicon|locales|static|javascripts|pluginfw|api)/)) {
+    return cb([true]);
+  }
 
-    logger.debug('authorize', req.path, req.query);
+  logger.debug('authorize', req.path, req.query);
 
-    // See if handover is done using JWT. We get username from there, if it exists.
-    _handleJWT(req);
+  // See if handover is done using JWT. We get username from there, if it exists.
+  _handleJWT(req);
 
-    // Parse Topic info from the request and store it in session.
-    await _handleTopicInfo(req);
-        // Delete EP long lasting 'token' cookie to force into creating a new one before sending CLIENT_READY.
-        // Use short living tokens. Every time User visits, a new one is created. When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
-    res.clearCookie('token');
+  // Parse Topic info from the request and store it in session.
+  await _handleTopicInfo(req);
+  // Delete EP long lasting 'token' cookie
+  // to force into creating a new one before sending CLIENT_READY.
+  // Use short living tokens. Every time User visits, a new one is created.
+  // When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
+  res.clearCookie('token');
 
-    if (context.req.session.user) {
-        context.users[context.req.session.user.name]  = context.req.session.user;
-        return cb([true]);
-    }
-    return cb([false]);
-}
+  if (context.req.session.user) {
+    context.users[context.req.session.user.name] = context.req.session.user;
+    return cb([true]);
+  }
+  return cb([false]);
+};
 /**
  * authorize hook
  *
  * @param {string} hook "authorize"
  * @param {object} context Context
- * @param {function} cb Function cb([thouShallPass]) where thouShallPass is true or false depending if authorized or not.
+ * @param {function} cb Function cb([thouShallPass])
+ * where thouShallPass is true or false depending if authorized or not.
  *
  * @returns {void}
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_authorize}
  */
-exports.authorize = async function (hook, context, cb) {
-    const req = context.req;
-    const res = context.res;
+exports.authorize = async (hook, context, cb) => {
+  const req = context.req;
+  const res = context.res;
 
-    // Handover has completed and from here on we check for permissions by calling Toru API.
-    // This is to ensure that if permissions change in Toru system, we act accordingly in EP
-    const topicId = _.get(req.session, 'topic.id');
-    const userId = _.get(req.session, 'user.id');
-    // userId may be null, it's ok for a public Topic
-    if (!topicId) {
-        return cb([false]);
-    }
+  // Handover has completed and from here on we check for permissions by calling Toru API.
+  // This is to ensure that if permissions change in Toru system, we act accordingly in EP
+  const topicId = _.get(req.session, 'topic.id');
+  const userId = _.get(req.session, 'user.id');
+  // userId may be null, it's ok for a public Topic
+  if (!topicId) {
+    return cb([false]);
+  }
 
-    const level = await _getTopicPermissions(topicId, userId, true);
-    if (['admin', 'edit'].indexOf(level) > -1) { // User has edit permissions
-        logger.debug('authorize', 'User has edit permissions as the level is', level, 'Access granted!');
+  const lvl = await _getTopicPermissions(topicId, userId, true);
+  if (['admin', 'edit'].indexOf(lvl) > -1) { // User has edit permissions
+    logger.debug('authorize', 'User has edit permissions as the level is', lvl, 'Access granted!');
 
-        return cb([true]);
-    } else if (level === 'read') { // User has read-only
-        logger.debug('authorize', 'User read permissions as the level is', level, 'Access granted!');
-        if (req.path.match(/^\/p\/r\./)) { // We dont want to redirect to read-only if we are already there
-            return cb([true]);
-        } else {
-            // Redirect to read-only version of the pad
-            try {
-                const readOnlyResult = await API.getReadOnlyID(topicId);
-                const roPadID = readOnlyResult.readOnlyID;
+    return cb([true]);
+  } else if (lvl === 'read') { // User has read-only
+    logger.debug('authorize', 'User read permissions as the level is', lvl, 'Access granted!');
+    // We dont want to redirect to read-only if we are already there
+    if (req.path.match(/^\/p\/r\./)) {
+      return cb([true]);
+    } else {
+      // Redirect to read-only version of the pad
+      try {
+        const readOnlyResult = await API.getReadOnlyID(topicId);
+        const roPadID = readOnlyResult.readOnlyID;
 
-                let roPadPath = '/p/' + roPadID;
+        let roPadPath = `/p/${roPadID}`;
 
-                // Pass on all frame parameters to the read-only url so that themes and translations would work
-                const parts = req.originalUrl.split('?');
-                if (parts && parts.length > 1) {
-                    roPadPath += '?' + parts[1];
-                }
-
-                logger.debug('Read only access. Redirecting to', roPadPath);
-
-                return res.redirect(302, roPadPath);
-            } catch(err) {
-                logger.error('Error while getting read-only Pad ID.  Access denied!', err);
-
-                return cb([false]);
-            };
+        // Pass on all frame parameters to the read-only url
+        // so that themes and translations would work
+        const parts = req.originalUrl.split('?');
+        if (parts && parts.length > 1) {
+          roPadPath += `?${parts[1]}`;
         }
-    } else { // User has no permissions
-        logger.warn('User has no permissions to access the Pad. Access denied!');
+
+        logger.debug('Read only access. Redirecting to', roPadPath);
+
+        return res.redirect(302, roPadPath);
+      } catch (err) {
+        logger.error('Error while getting read-only Pad ID.  Access denied!', err);
 
         return cb([false]);
+      }
     }
+  } else { // User has no permissions
+    logger.warn('User has no permissions to access the Pad. Access denied!');
+
+    return cb([false]);
+  }
 };
 
 /**
@@ -357,40 +372,40 @@ exports.authorize = async function (hook, context, cb) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_authfailure}
  */
-exports.authzFailure = function (hook, context, cb) {
-    logger.debug('authFailure');
-    const res = context.res;
-    res.status(403).send('Authentication required');
+exports.authzFailure = (hook, context, cb) => {
+  logger.debug('authFailure');
+  const res = context.res;
+  res.status(403).send('Authentication required');
 
-    return cb([true]);
+  return cb([true]);
 };
 
-exports.authnFailure = function (hook, context, cb) {
-    logger.debug('authFailure');
-    const res = context.res;
-    res.status(401).send('Authentication required');
+exports.authnFailure = (hook, context, cb) => {
+  logger.debug('authFailure');
+  const res = context.res;
+  res.status(401).send('Authentication required');
 
-    return cb([true]);
+  return cb([true]);
 };
 
-const _syncAuthorData = async function (authorData) {
-    const caCert = pluginSettings.authorization.caCert;
-    const authorSyncUrl = pluginSettings.authorSync.url;
-    const apiKey = pluginSettings.authorization.apiKey;
-    const path = authorSyncUrl.replace(':userId', authorData.userId);
-    const req = request.put(path)
+const _syncAuthorData = async (authorData) => {
+  const caCert = pluginSettings.authorization.caCert;
+  const authorSyncUrl = pluginSettings.authorSync.url;
+  const apiKey = pluginSettings.authorization.apiKey;
+  const path = authorSyncUrl.replace(':userId', authorData.userId);
+  const req = request.put(path);
 
-    if (caCert) {
-        req.ca(caCert);
-    }
-    try {
-        await req
-            .set('X-API-KEY', apiKey)
-            .send(authorData);
-    } catch(err) {
-        console.log(err);
-    }
-}
+  if (caCert) {
+    req.ca(caCert);
+  }
+  try {
+    await req
+        .set('X-API-KEY', apiKey)
+        .send(authorData);
+  } catch (err) {
+    console.log(err);
+  }
+};
 /**
  * handleMessage hook
  *
@@ -402,69 +417,72 @@ const _syncAuthorData = async function (authorData) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_handlemessage}
  */
-exports.handleMessage = async function (hook, context) {
-    // All other messages have to go through authorization
-    const client = context.client;
-    const message = context.message;
-    const session = client.client.request.session;
-    const topicId = _.get(session, 'topic.id');
-    const userId = _.get(session, 'user.id');
-    const token = message.token;
+exports.handleMessage = async (hook, context) => {
+  // All other messages have to go through authorization
+  const client = context.client;
+  const message = context.message;
+  const session = client.client.request.session;
+  const topicId = _.get(session, 'topic.id');
+  const userId = _.get(session, 'user.id');
+  const token = message.token;
 
-    logger.debug('handleMessage', context.message, session.id);
-    // Disable editing user info
-    if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
-        logger.debug('handleMessage', 'Not allowing USERINFO_UPDATE update, don\'t want users changing their names.');
+  logger.debug('handleMessage', context.message, session.id);
+  // Disable editing user info
+  if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
+    logger.debug('handleMessage', 'Not allowing USERINFO_UPDATE update, don\'t want users changing their names.');
+
+    return [null];
+  }
+
+  if (!topicId) {
+    logger.debug('handleMessage', 'Message dropped cause there is no session info');
+    client.json.send({accessStatus: 'deny'});
+
+    return [null];
+  }
+
+  // Client ready is always allowed
+  if (context.message.type === 'CLIENT_READY') {
+    const displayName = _.get(session, 'user.name');
+    // Pull some magic tricks to reuse same authorID for different tokens.
+    if (userId) {
+      try {
+        logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
+        const res = await authorManager.createAuthorIfNotExistsFor(userId, displayName);
+        const userAuthorId = res.authorID;
+        session.authorID = userAuthorId;
+        _syncAuthorData({userId, authorID: userAuthorId});
+        padMessageHandler.sessioninfos[client.id].author = userAuthorId;
+        // Create token in DB with our already existing author.
+        // EP would create a new author each time a new token is created.
+        db.set(`token2author:${token}`, userAuthorId);
+        logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
+
+        return [message];
+      } catch (err) {
+        logger.error('Failed to update User info', err);
 
         return [null];
-    }
-
-    if (!topicId) {
-        logger.debug('handleMessage', 'Message dropped cause there is no session info');
-        client.json.send({accessStatus: 'deny'});
-
-        return [null];
-    }
-
-    // Client ready is always allowed
-    if (context.message.type === 'CLIENT_READY') {
-        const displayName = _.get(session, 'user.name');
-        // Pull some magic tricks to reuse same authorID for different tokens.
-        if (userId) {
-            try {
-                logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
-                const res = await authorManager.createAuthorIfNotExistsFor(userId, displayName);
-                const userAuthorId = res.authorID;
-                session.authorID = userAuthorId;
-                _syncAuthorData({userId, authorID: userAuthorId});
-                padMessageHandler.sessioninfos[client.id].author = userAuthorId;
-                // Create token in DB with our already existing author. EP would create a new author each time a new token is created.
-                db.set('token2author:' + token, userAuthorId);
-                logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
-
-                return [message];
-            } catch(err) {
-                logger.error('Failed to update User info', err);
-
-                return [null];
-            };
-        } else {
-            return [message];
-        }
+      }
     } else {
-        const level = await _getTopicPermissions(topicId, userId, false);
-
-        if (['admin', 'edit'].indexOf(level) > -1) {
-            return [message];
-        } else if (level === 'read' && context.message.type === 'CHANGESET_REQ') { // Changeset requests are allowed for read level
-            return [message];
-        } else {
-            logger.debug('handleMessage', 'User is not allowed to post to this pad. The level was', level, 'Access denied!');
-            client.json.send({accessStatus: 'deny'}); // Send deny message, so that UI would throw "no permissions" error
-
-            return [null];
-        }
+      return [message];
     }
+  } else {
+    const level = await _getTopicPermissions(topicId, userId, false);
+
+    if (['admin', 'edit'].indexOf(level) > -1) {
+      return [message];
+    } else if (level === 'read' && context.message.type === 'CHANGESET_REQ') {
+      // Changeset requests are allowed for read level
+      return [message];
+    } else {
+      logger.debug('handleMessage', 'User is not allowed to post to this pad. The level was', level, 'Access denied!');
+      // Send deny message, so that UI would throw "no permissions" error
+      client.json.send({accessStatus: 'deny'});
+
+      return [null];
+    }
+  }
 };
 
 /**
@@ -478,23 +496,24 @@ exports.handleMessage = async function (hook, context) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_userleave}
  */
-exports.userLeave = function (hook, session, callback) {
-    logger.debug('userLeave', session, session.id);
+exports.userLeave = (hook, session, callback) => {
+  logger.debug('userLeave', session, session.id);
 
-    // Delete the token from DB
-    const token = _.get(session, 'auth.token');
-    if (token) {
-        // Cleanup DB from the token, as we generate a new one on each authorization, there would be a lot
-        db.remove(_getDbKeyForToken(token), callback);
-    } else {
-        logger.warn('userLeave', 'Wanted to clean up DB but no token was present!', token);
+  // Delete the token from DB
+  const token = _.get(session, 'auth.token');
+  if (token) {
+    // Cleanup DB from the token,
+    // as we generate a new one on each authorization, there would be a lot
+    db.remove(_getDbKeyForToken(token), callback);
+  } else {
+    logger.warn('userLeave', 'Wanted to clean up DB but no token was present!', token);
 
-        return callback();
-    }
+    return callback();
+  }
 };
 
 exports.clientVars = async (hookName, context) => {
-    const authorId = context.socket.client.request.session.authorID;
+  const authorId = context.socket.client.request.session.authorID;
 
-    return {'userId': authorId}
+  return {userId: authorId};
 };

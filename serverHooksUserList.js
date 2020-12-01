@@ -1,5 +1,7 @@
 'use strict';
 
+const eejs = require('ep_etherpad-lite/node/eejs/');
+
 /**
  * padInitToolbar hook
  *
@@ -7,23 +9,24 @@
  *
  * @param {string} hookName Hook name
  * @param {object} args Arguments
+ * @param {method} cb Callback
  *
  * @returns {void}
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_padinittoolbar}
  */
-exports.padInitToolbar = function (hookName, args, cb) {
-    var toolbar = args.toolbar;
+exports.padInitToolbar = (hookName, args, cb) => {
+  const toolbar = args.toolbar;
 
-    var button = toolbar.button({
-        command: 'epCitizenOSUserListToggle',
-        localizationId: 'pad.toolbar.showusers.title', // Reusing existing translations
-        class: 'buttonicon buttonicon-showusers epCitizenOSUserListToggle'
-    });
+  const button = toolbar.button({
+    command: 'epCitizenOSUserListToggle',
+    localizationId: 'pad.toolbar.showusers.title', // Reusing existing translations
+    class: 'buttonicon buttonicon-showusers epCitizenOSUserListToggle',
+  });
 
-    toolbar.registerButton('epCitizenOSUserListToggle', button);
+  toolbar.registerButton('epCitizenOSUserListToggle', button);
 
-    return cb();
+  return cb();
 };
 
 /**
@@ -39,11 +42,11 @@ exports.padInitToolbar = function (hookName, args, cb) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_eejsblock_name}
  */
-var eejs = require('ep_etherpad-lite/node/eejs/');
-exports.eejsBlock_afterEditbar = function (hookName, args, cb) {
-    args.content += eejs.require('ep_auth_citizenos/templates/userList.ejs');
 
-    return cb();
+exports.eejsBlock_afterEditbar = (hookName, args, cb) => {
+  args.content += eejs.require('ep_auth_citizenos/templates/userList.ejs');
+
+  return cb();
 };
 
 /**
@@ -59,9 +62,8 @@ exports.eejsBlock_afterEditbar = function (hookName, args, cb) {
  *
  * @see {@link http://etherpad.org/doc/v1.5.7/#index_eejsblock_name}
  */
-exports.eejsBlock_styles = function (hookName, args, cb) {
-    args.content += eejs.require('ep_auth_citizenos/templates/userListStylesheets.ejs');
+exports.eejsBlock_styles = (hookName, args, cb) => {
+  args.content += eejs.require('ep_auth_citizenos/templates/userListStylesheets.ejs');
 
-    return cb();
+  return cb();
 };
-
