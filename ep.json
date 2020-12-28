@@ -10,6 +10,7 @@
       "hooks": {
         "loadSettings": "ep_auth_citizenos/serverHooks:loadSettings",
         "clientVars":"ep_auth_citizenos/serverHooks:clientVars",
+        "preAuthorize": "ep_auth_citizenos/serverHooks:preAuthorize",
         "authenticate": "ep_auth_citizenos/serverHooks:authenticate",
         "authorize": "ep_auth_citizenos/serverHooks:authorize",
         "authzFailure": "ep_auth_citizenos/serverHooks:authzFailure",

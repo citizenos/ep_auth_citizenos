@@ -262,6 +262,23 @@ exports.loadSettings = (hook, context, cb) => {
 
   return cb();
 };
+exports.preAuthorize = async (hook, context, cb) => {
+  const staticPathsRE = new RegExp(`^/(?:${[
+    'api/.*',
+    'favicon\\.ico',
+    'javascripts/.*',
+    'locales\\.json',
+    'locales/.*\\.json',
+    'pluginfw/.*',
+    'static/.*',
+  ].join('|')})$`);
+  if (context.req.path.match(staticPathsRE)) {
+    return cb([true]);
+  } else {
+    return cb([]);
+  }
+}
+
 exports.authenticate = async (hook, context, cb) => {
   if (!context.users) {
     context.users = {};
