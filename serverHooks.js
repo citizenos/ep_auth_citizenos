@@ -296,14 +296,6 @@ exports.authenticate = async (hook, context, cb) => {
   // See if handover is done using JWT. We get username from there, if it exists.
   _handleJWT(req);
 
-  // Parse Topic info from the request and store it in session.
-  await _handleTopicInfo(req);
-  // Delete EP long lasting 'token' cookie
-  // to force into creating a new one before sending CLIENT_READY.
-  // Use short living tokens. Every time User visits, a new one is created.
-  // When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
-  res.clearCookie('token');
-
   if (context.req.session.user) {
     context.users[context.req.session.user.name] = context.req.session.user;
     return cb([true]);
@@ -326,6 +318,14 @@ exports.authorize = async (hook, context, cb) => {
   const req = context.req;
   const res = context.res;
 
+
+  // Parse Topic info from the request and store it in session.
+  await _handleTopicInfo(req);
+  // Delete EP long lasting 'token' cookie
+  // to force into creating a new one before sending CLIENT_READY.
+  // Use short living tokens. Every time User visits, a new one is created.
+  // When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
+  res.clearCookie('token');
   // Handover has completed and from here on we check for permissions by calling Toru API.
   // This is to ensure that if permissions change in Toru system, we act accordingly in EP
   const topicId = _.get(req.session, 'topic.id');
@@ -457,7 +457,6 @@ exports.handleMessage = async (hook, context) => {
 
     return [null];
   }
-
   // Client ready is always allowed
   if (context.message.type === 'CLIENT_READY') {
     const displayName = _.get(session, 'user.name');
@@ -521,11 +520,11 @@ exports.userLeave = (hook, session, callback) => {
   if (token) {
     // Cleanup DB from the token,
     // as we generate a new one on each authorization, there would be a lot
-    db.remove(_getDbKeyForToken(token), callback);
+    db.remove(_getDbKeyForToken(token));
+    callback();
   } else {
     logger.warn('userLeave', 'Wanted to clean up DB but no token was present!', token);
-
-    return callback();
+    callback();
   }
 };
 
