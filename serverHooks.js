@@ -262,7 +262,8 @@ exports.loadSettings = (hook, context, cb) => {
 
   return cb();
 };
-exports.preAuthorize = async (hook, context, cb) => {
+
+exports.preAuthorize = (hook, {req}) => {
   const staticPathsRE = new RegExp(`^/(?:${[
     'api/.*',
     'favicon\\.ico',
@@ -272,12 +273,10 @@ exports.preAuthorize = async (hook, context, cb) => {
     'pluginfw/.*',
     'static/.*',
   ].join('|')})$`);
-  if (context.req.path.match(staticPathsRE)) {
-    return cb([true]);
-  } else {
-    return cb([]);
-  }
-}
+
+  if (req.path.match(staticPathsRE)) return true; // Allow access, next handlers are skipped
+  return; // This should delegate access handling to next handlers..
+};
 
 exports.authenticate = async (hook, context, cb) => {
   if (!context.users) {
