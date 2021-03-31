@@ -8,4 +8,4 @@ node_modules
 *.swp
 /.idea/*
 *.log*
-./.ep_initialized
+/.ep_initialized
