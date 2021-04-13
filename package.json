@@ -5,6 +5,10 @@
   "scripts": {
     "prepush": "grunt eslint"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/citizenos/ep_auth_citizenos.git"
+  },
   "dependencies": {
     "async": "3.2.0",
     "async-stacktrace": "0.0.2",
