@@ -303,7 +303,7 @@ exports.authenticate = async (hook, {req, users}) => {
  *
  * @returns {Promise<boolean|*|Response>}
  *
- * @see {@link http://etherpad.org/doc/v1.8.13/#index_authorize}
+ * @see {@link https://etherpad.org/doc/v1.8.13/#index_authorize}
  */
 
 exports.authorize = async (hook, {req, res}) => {
@@ -332,34 +332,12 @@ exports.authorize = async (hook, {req, res}) => {
 
         return true;
     } else if (lvl === 'read') { // User has read-only
-        logger.debug('authorize', 'User read permissions as the level is', lvl, 'Access granted!');
-        // We dont want to redirect to read-only if we are already there
-        if (req.path.match(/^\/p\/r\./)) {
-            return true;
-        } else {
-            // Redirect to read-only version of the pad
-            try {
-                const readOnlyResult = await API.getReadOnlyID(topicId);
-                const roPadID = readOnlyResult.readOnlyID;
+        logger.debug('authorize', 'User read permissions as the level is', lvl, 'Access granted! READONLY');
 
-                let roPadPath = `/p/${roPadID}`;
+        // Set the custom header for CitizenOS API tests to know that plugin did enforce read-only mode.
+        res.set('X-EP-AUTH-CITIZENOS-AUTHORIZE', 'readonly');
 
-                // Pass on all frame parameters to the read-only url
-                // so that themes and translations would work
-                const parts = req.originalUrl.split('?');
-                if (parts && parts.length > 1) {
-                    roPadPath += `?${parts[1]}`;
-                }
-
-                logger.debug('Read only access. Redirecting to', roPadPath);
-
-                return res.redirect(302, roPadPath);
-            } catch (err) {
-                logger.error('Error while getting read-only Pad ID.  Access denied!', err);
-
-                return false;
-            }
-        }
+        return 'readOnly'; //As per - https://etherpad.org/doc/v1.8.13/#index_authorize
     } else { // User has no permissions
         logger.warn('User has no permissions to access the Pad. Access denied!');
 
