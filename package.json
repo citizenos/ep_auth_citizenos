@@ -1,6 +1,6 @@
 {
   "name": "ep_auth_citizenos",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": false,
   "scripts": {
     "prepush": "grunt eslint"

@@ -11,8 +11,8 @@ const pluginSettings = settings[PLUGIN_NAME];
 const db = require('ep_etherpad-lite/node/db/DB').db;
 const API = require('ep_etherpad-lite/node/db/API');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
-const padMessageHandler = require('ep_etherpad-lite/node/handler/PadMessageHandler');
 const logger = require('ep_etherpad-lite/node_modules/log4js').getLogger(PLUGIN_NAME);
+const randomString = require('ep_etherpad-lite/node/utils/randomstring');
 
 // Permission cache
 const permissionCache = {};
@@ -319,16 +319,10 @@ exports.authenticate = async (hook, {req, users}) => {
  */
 
 exports.authorize = async (hook, {req, res}) => {
-    logger.error(hook, 'session', req.session);
+    logger.error(hook, 'session', req.session, 'cookies', req.cookies);
 
     // Parse Topic info from the request and store it in session.
     await _handleTopicInfo(req);
-
-    // Delete EP long lasting 'token' cookie
-    // to force into creating a new one before sending CLIENT_READY.
-    // Use short living tokens. Every time User visits, a new one is created.
-    // When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
-    res.clearCookie('token');
 
     // Handover has completed and from here on we check for permissions by calling Citizen OS API.
     // This is to ensure that if permissions change in Citizen OS system, we act accordingly in EP
@@ -340,6 +334,31 @@ exports.authorize = async (hook, {req, res}) => {
     }
 
     const lvl = await _getTopicPermissions(topicId, userId, true);
+
+    // Citizen OS wants 1:1 Citizen OS userId to EP authorID mapping. We also want login from single user+location - https://github.com/citizenos/citizenos-fe/issues/676
+    if (lvl) {
+        // Create or find an author for Citizen OS user ID.
+        const resAuthor = await authorManager.createAuthorIfNotExistsFor(userId, req.session.user.name);
+        const userAuthorId = resAuthor.authorID;
+
+        // Create token in DB with our already existing author.
+        const token = `t.${randomString(20)}`;
+        await db.set(`token2author:${token}`, userAuthorId);
+
+        // TODO: Ideally would like to skip IF author is already set on Citizen OS side. As the "createAuthorIfNotExistsFor" does not return info on if the author already existed, there is more work
+        await _syncAuthorData({
+            userId,
+            authorID: userAuthorId
+        });
+
+        // Send cookie with "token", note that in original EP implementation FE generates the "token".
+        res.cookie('token', token, {
+            path: '/',
+            expires: 0, // Session cookie
+            httpOnly: false, // EP FE JS wants to read this
+            secure: true // FORCE HTTPS
+        });
+    }
 
     if (['admin', 'edit'].indexOf(lvl) > -1) { // User has edit permissions
         logger.debug('authorize', 'User has edit permissions as the level is', lvl, 'Access granted!');
@@ -439,7 +458,6 @@ exports.handleMessage = async (hook, {socket, message}) => {
     const session = socket.client.request.session;
     const topicId = _.get(session, 'topic.id');
     const userId = _.get(session, 'user.id');
-    const token = message.token;
 
     logger.debug('handleMessage', message, session.id);
     // Disable editing user info
@@ -456,38 +474,7 @@ exports.handleMessage = async (hook, {socket, message}) => {
         return [null];
     }
 
-    // Client ready is always allowed
-    if (message.type === 'CLIENT_READY') {
-        logger.error('HANDLE CLIENT READY in EP_AUTH_CITIZENOS');
-
-        const displayName = _.get(session, 'user.name');
-        // Pull some magic tricks to reuse same authorID for different tokens.
-        if (userId) {
-            try {
-                logger.error('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
-                const res = await authorManager.createAuthorIfNotExistsFor(userId, displayName);
-                const userAuthorId = res.authorID;
-                session.authorID = userAuthorId;
-                _syncAuthorData({
-                    userId,
-                    authorID: userAuthorId
-                });
-                padMessageHandler.sessioninfos[socket.id].author = userAuthorId;
-                // Create token in DB with our already existing author.
-                // EP would create a new author each time a new token is created.
-                db.set(`token2author:${token}`, userAuthorId);
-                logger.error('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
-
-                return [message];
-            } catch (err) {
-                logger.error('Failed to update User info', err);
-
-                return [null];
-            }
-        } else {
-            return [message];
-        }
-    } else {
+    if (message.type !== 'CLIENT_READY') { // ALL BUT 'CLIENT_READY' require authorization.
         const level = await _getTopicPermissions(topicId, userId, false);
 
         if (['admin', 'edit'].indexOf(level) > -1) {
@@ -530,14 +517,3 @@ exports.userLeave = (hook, session) => {
         logger.warn('userLeave', 'Wanted to clean up DB but no token was present!', token);
     }
 };
-
-exports.clientVars = async (hook, context) => {
-    logger.error(hook, 'clientVars.userId', context.socket.client.request.session.authorID);
-
-    const authorId = context.socket.client.request.session.authorID;
-
-    return {
-        userId: authorId
-    };
-};
-
