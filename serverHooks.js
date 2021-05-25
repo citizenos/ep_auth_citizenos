@@ -31,6 +31,7 @@ const _getDbKeyForToken = (token) => `token2author:${token}`;
 
 /**
  * Find out Topic ID from the Pad url.
+ *
  * If it's a Pad in edit mode, the Pad ID === Topic ID
  * If it's a read-only Pad link, the Topic ID is looked up from read-only ID
  *
@@ -255,6 +256,8 @@ exports.loadSettings = async () => {
 };
 
 exports.preAuthorize = (hook, {req}) => {
+    logger.debug(hook);
+
     const staticPathsRE = new RegExp(`^/(?:${[
         'api/.*',
         'favicon\\.ico',
@@ -270,7 +273,13 @@ exports.preAuthorize = (hook, {req}) => {
     return; // This should delegate access handling to next handlers..
 };
 
+exports.onAccessCheck = async (hook, {padID, token, sessionCookie}) => {
+    console.error(hook, 'padID', padID, 'token', token, 'sessionCookie', sessionCookie);
+};
+
 exports.authenticate = async (hook, {req, users}) => {
+    logger.error(hook);
+
     if (!users) {
         users = {};
     }
@@ -286,6 +295,8 @@ exports.authenticate = async (hook, {req, users}) => {
     // Sets the req.session.user if JWT is valid
     _handleJWT(req);
 
+    logger.error(hook, 'USERS IN EP', users);
+    logger.error(hook, 'req.session.user', req.session.user);
     if (req.session.user) {
         users[req.session.user.name] = req.session.user;
         return true;
@@ -293,6 +304,7 @@ exports.authenticate = async (hook, {req, users}) => {
 
     return false;
 };
+
 /**
  * authorize hook
  *
@@ -307,6 +319,8 @@ exports.authenticate = async (hook, {req, users}) => {
  */
 
 exports.authorize = async (hook, {req, res}) => {
+    logger.error(hook, 'session', req.session);
+
     // Parse Topic info from the request and store it in session.
     await _handleTopicInfo(req);
 
@@ -316,8 +330,8 @@ exports.authorize = async (hook, {req, res}) => {
     // When User leaves, we make best effort to clean up the DB. See "exports.userLeave".
     res.clearCookie('token');
 
-    // Handover has completed and from here on we check for permissions by calling Toru API.
-    // This is to ensure that if permissions change in Toru system, we act accordingly in EP
+    // Handover has completed and from here on we check for permissions by calling Citizen OS API.
+    // This is to ensure that if permissions change in Citizen OS system, we act accordingly in EP
     const topicId = _.get(req.session, 'topic.id');
     const userId = _.get(req.session, 'user.id');
     // userId may be null, it's ok for a public Topic
@@ -361,7 +375,7 @@ exports.authorize = async (hook, {req, res}) => {
  */
 
 exports.authzFailure = (hook, {res}) => {
-    logger.debug('authzFailure');
+    logger.debug(hook);
 
     res.status(403).send('Authentication required');
 
@@ -383,7 +397,7 @@ exports.authzFailure = (hook, {res}) => {
  * @see https://etherpad.org/doc/v1.8.13/#index_authnfailure
  */
 exports.authnFailure = (hook, {res}) => {
-    logger.debug('authFailure');
+    logger.debug(hook);
 
     res.status(401).send('Authentication required');
 
@@ -418,9 +432,11 @@ const _syncAuthorData = async (authorData) => {
  *
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_handlemessage}
  */
-exports.handleMessage = async (hook, {client, message}) => {
+exports.handleMessage = async (hook, {socket, message}) => {
+    logger.error(hook, 'session', socket.client.request.session);
+
     // All other messages have to go through authorization
-    const session = client.client.request.session;
+    const session = socket.client.request.session;
     const topicId = _.get(session, 'topic.id');
     const userId = _.get(session, 'user.id');
     const token = message.token;
@@ -435,17 +451,20 @@ exports.handleMessage = async (hook, {client, message}) => {
 
     if (!topicId) {
         logger.debug('handleMessage', 'Message dropped cause there is no session info');
-        client.json.send({accessStatus: 'deny'});
+        socket.json.send({accessStatus: 'deny'});
 
         return [null];
     }
+
     // Client ready is always allowed
     if (message.type === 'CLIENT_READY') {
+        logger.error('HANDLE CLIENT READY in EP_AUTH_CITIZENOS');
+
         const displayName = _.get(session, 'user.name');
         // Pull some magic tricks to reuse same authorID for different tokens.
         if (userId) {
             try {
-                logger.debug('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
+                logger.error('handleMessage', 'Creating a new author for User', userId, 'Token is', token);
                 const res = await authorManager.createAuthorIfNotExistsFor(userId, displayName);
                 const userAuthorId = res.authorID;
                 session.authorID = userAuthorId;
@@ -453,11 +472,11 @@ exports.handleMessage = async (hook, {client, message}) => {
                     userId,
                     authorID: userAuthorId
                 });
-                padMessageHandler.sessioninfos[client.id].author = userAuthorId;
+                padMessageHandler.sessioninfos[socket.id].author = userAuthorId;
                 // Create token in DB with our already existing author.
                 // EP would create a new author each time a new token is created.
                 db.set(`token2author:${token}`, userAuthorId);
-                logger.debug('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
+                logger.error('handleMessage', 'Created new token2authhor mapping', token, userAuthorId);
 
                 return [message];
             } catch (err) {
@@ -479,7 +498,7 @@ exports.handleMessage = async (hook, {client, message}) => {
         } else {
             logger.debug('handleMessage', 'User is not allowed to post to this pad. The level was', level, 'Access denied!');
             // Send deny message, so that UI would throw "no permissions" error
-            client.json.send({accessStatus: 'deny'});
+            socket.json.send({accessStatus: 'deny'});
 
             return [null];
         }
@@ -489,32 +508,36 @@ exports.handleMessage = async (hook, {client, message}) => {
 /**
  * userLeave hook
  *
+ * NOTE: Runs SYNC in EP.
+ *
  * @param {string} hook "userLeave"
  * @param {object} session Session info
- * @param {function} callback Callback function (err, res)
  *
  * @returns {void}
  *
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_userleave}
  */
-exports.userLeave = (hook, session, callback) => {
-    logger.debug('userLeave', session, session.id);
+exports.userLeave = (hook, session) => {
+    logger.debug(hook, session, session.id);
 
     // Delete the token from DB
     const token = _.get(session, 'auth.token');
     if (token) {
         // Cleanup DB from the token,
         // as we generate a new one on each authorization, there would be a lot
-        db.remove(_getDbKeyForToken(token));
-        callback();
+        db.remove(_getDbKeyForToken(token)); // NOTE: Runs async, but "userLeave" hook itself is expected to be sync. It's ok tho, it is just best effort cleanup.
     } else {
         logger.warn('userLeave', 'Wanted to clean up DB but no token was present!', token);
-        callback();
     }
 };
 
-exports.clientVars = async (hookName, context) => {
+exports.clientVars = async (hook, context) => {
+    logger.error(hook, 'clientVars.userId', context.socket.client.request.session.authorID);
+
     const authorId = context.socket.client.request.session.authorID;
 
-    return {userId: authorId};
+    return {
+        userId: authorId
+    };
 };
+
