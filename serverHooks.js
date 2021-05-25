@@ -273,12 +273,8 @@ exports.preAuthorize = (hook, {req}) => {
     return; // This should delegate access handling to next handlers..
 };
 
-exports.onAccessCheck = async (hook, {padID, token, sessionCookie}) => {
-    console.error(hook, 'padID', padID, 'token', token, 'sessionCookie', sessionCookie);
-};
-
 exports.authenticate = async (hook, {req, users}) => {
-    logger.error(hook);
+    logger.debug(hook);
 
     if (!users) {
         users = {};
@@ -295,8 +291,6 @@ exports.authenticate = async (hook, {req, users}) => {
     // Sets the req.session.user if JWT is valid
     _handleJWT(req);
 
-    logger.error(hook, 'USERS IN EP', users);
-    logger.error(hook, 'req.session.user', req.session.user);
     if (req.session.user) {
         users[req.session.user.name] = req.session.user;
         return true;
@@ -319,7 +313,7 @@ exports.authenticate = async (hook, {req, users}) => {
  */
 
 exports.authorize = async (hook, {req, res}) => {
-    logger.error(hook, 'session', req.session, 'cookies', req.cookies);
+    logger.debug(hook, 'session', req.session, 'cookies', req.cookies);
 
     // Parse Topic info from the request and store it in session.
     await _handleTopicInfo(req);
@@ -438,7 +432,7 @@ const _syncAuthorData = async (authorData) => {
             .set('X-API-KEY', apiKey)
             .send(authorData);
     } catch (err) {
-        console.log(err);
+        logger.error(err);
     }
 };
 /**
@@ -452,14 +446,13 @@ const _syncAuthorData = async (authorData) => {
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_handlemessage}
  */
 exports.handleMessage = async (hook, {socket, message}) => {
-    logger.error(hook, 'session', socket.client.request.session);
+    logger.debug(hook, 'session', socket.client.request.session, 'message', message);
 
     // All other messages have to go through authorization
     const session = socket.client.request.session;
     const topicId = _.get(session, 'topic.id');
     const userId = _.get(session, 'user.id');
 
-    logger.debug('handleMessage', message, session.id);
     // Disable editing user info
     if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
         logger.debug('handleMessage', 'Not allowing USERINFO_UPDATE update, don\'t want users changing their names.');
