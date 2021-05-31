@@ -5,6 +5,7 @@ const PLUGIN_NAME = 'ep_auth_citizenos';
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const request = require('superagent');
+const cors = require('cors');
 
 const settings = require('ep_etherpad-lite/node/utils/Settings');
 const pluginSettings = settings[PLUGIN_NAME];
@@ -240,6 +241,21 @@ exports.loadSettings = async () => {
         logger.error(missingJWTAlgo, pluginSettings);
         throw new Error(missingJWTAlgo);
     }
+
+    const apiCorsOptions = _.get(pluginSettings, 'api.cors');
+
+    if (apiCorsOptions && apiCorsOptions.origin) {
+        logger.info('Handling CORS origin as RegExp!');
+
+        if (!Array.isArray(apiCorsOptions.origin)) {
+            apiCorsOptions.origin = [apiCorsOptions.origin];
+        }
+        apiCorsOptions.origin.forEach(function (pattern, i) {
+            apiCorsOptions.origin[i] = new RegExp(pattern, 'i');
+        });
+
+        logger.debug('API CORS options OK', apiCorsOptions);
+    }
 };
 
 exports.expressCreateServer = (hook, {app}) => {
@@ -253,7 +269,7 @@ exports.expressCreateServer = (hook, {app}) => {
      *
      * When API and EP were on the same domain, API /logout could unset the cookies, but that is not the case any more.
      */
-    app.get('/ep_auth_citizenos/logout', (req, res) => {
+    app.get('/ep_auth_citizenos/logout', cors(pluginSettings.apiCorsOptions), (req, res) => {
         logger.error(req.path);
 
         req.session.destroy((err) => {
@@ -261,10 +277,10 @@ exports.expressCreateServer = (hook, {app}) => {
                 logger.error('Failed to log out', err);
                 return res.status(500).send('Internal server error');
             }
-            
+
             res.clearCookie('token');
             res.clearCookie('express_sid');
-            
+
             return res.status(200).send('OK');
         });
     });
