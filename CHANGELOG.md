@@ -1,3 +1,7 @@
+## 2021-05-31 - v. 1.0.5
+
+* Add ``GET /ep_auth_citizenos/logout` endpoint so that app can destroy EP session on logout` - https://github.com/citizenos/citizenos-fe/issues/676
+
 ## 2021-05-25 - v. 1.0.4
 
 * User limited to editing a Pad (Topic) from single location at the time. Other location is logged out - https://github.com/citizenos/citizenos-fe/issues/676

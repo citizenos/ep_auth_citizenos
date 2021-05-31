@@ -269,8 +269,8 @@ exports.expressCreateServer = (hook, {app}) => {
      *
      * When API and EP were on the same domain, API /logout could unset the cookies, but that is not the case any more.
      */
-    app.get('/ep_auth_citizenos/logout', cors(pluginSettings.apiCorsOptions), (req, res) => {
-        logger.error(req.path);
+    app.get('/ep_auth_citizenos/logout', cors(pluginSettings.api.cors), (req, res) => {
+        logger.debug(req.method + ' ' + req.path, 'host', req.get('host'), 'origin', req.get('origin'));
 
         req.session.destroy((err) => {
             if (err) {
