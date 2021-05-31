@@ -9,6 +9,7 @@
       },
       "hooks": {
         "loadSettings": "ep_auth_citizenos/serverHooks:loadSettings",
+        "expressCreateServer": "ep_auth_citizenos/serverHooks:expressCreateServer",
         "preAuthorize": "ep_auth_citizenos/serverHooks:preAuthorize",
         "authenticate": "ep_auth_citizenos/serverHooks:authenticate",
         "authorize": "ep_auth_citizenos/serverHooks:authorize",

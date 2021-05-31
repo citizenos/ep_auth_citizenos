@@ -76,22 +76,18 @@ const _handleTopicInfo = async (req) => {
 };
 
 /**
- * Handle JWT
- *
- * @param {object} req Request object
- *
- * @returns {void}
- *
+ * Citizen OS sends JWT in query that provides user info
+ * @param req
  * @private
  */
-const _handleJWT = (req) => {
+const _readJWT = (req) => {
     // JSON Web Token (JWT) passed by CitizenOS
     const token = req.query.jwt;
-    let tokenPayload;
+
     // Initial request, the Pad is first opened with JWT
     if (token) {
         try {
-            tokenPayload = jwt.verify(token, pluginSettings.jwt.publicKey, {algorithms: pluginSettings.jwt.algorithms});
+            return jwt.verify(token, pluginSettings.jwt.publicKey, {algorithms: pluginSettings.jwt.algorithms});
         } catch (err) {
             if (err.name === 'TokenExpiredError') {
                 // It's ok when for example navigating from timeline view back to Pad.
@@ -104,15 +100,6 @@ const _handleJWT = (req) => {
             logger.error('JWT verification failed', err, req.path);
 
             return;
-        }
-
-        const userId = _.get(tokenPayload, 'user.id');
-
-        if (userId) {
-            req.session.user = tokenPayload.user;
-            logger.debug('JWT payload was fine.', tokenPayload);
-        } else {
-            logger.error('JWT payload is missing required data.', tokenPayload);
         }
     }
 
@@ -255,11 +242,40 @@ exports.loadSettings = async () => {
     }
 };
 
+exports.expressCreateServer = (hook, {app}) => {
+    logger.debug(hook);
+
+    /**
+     * Logout from EP - destroy the EP session.
+     *
+     * Originally designed for Citizen OS FE to call on User logout to guarantee that no EP session is left behind in the User browser.
+     * When FE call to this fails, FE MUST inform User and NOT log out from Citizen OS either so that User knows that the session has NOT been destroyed.
+     *
+     * When API and EP were on the same domain, API /logout could unset the cookies, but that is not the case any more.
+     */
+    app.get('/ep_auth_citizenos/logout', (req, res) => {
+        logger.error(req.path);
+
+        req.session.destroy((err) => {
+            if (err) {
+                logger.error('Failed to log out', err);
+                return res.status(500).send('Internal server error');
+            }
+            
+            res.clearCookie('token');
+            res.clearCookie('express_sid');
+            
+            return res.status(200).send('OK');
+        });
+    });
+};
+
 exports.preAuthorize = (hook, {req}) => {
     logger.debug(hook);
 
     const staticPathsRE = new RegExp(`^/(?:${[
         'api/.*',
+        'ep_auth_citizenos/logout',
         'favicon\\.ico',
         'javascripts/.*',
         'locales\\.json',
@@ -274,7 +290,7 @@ exports.preAuthorize = (hook, {req}) => {
 };
 
 exports.authenticate = async (hook, {req, users}) => {
-    logger.debug(hook);
+    logger.error(hook);
 
     if (!users) {
         users = {};
@@ -289,11 +305,18 @@ exports.authenticate = async (hook, {req, users}) => {
 
     // See if handover is done using JWT. We get username from there, if it exists.
     // Sets the req.session.user if JWT is valid
-    _handleJWT(req);
+    const tokenPayload = _readJWT(req);
+    const userId = _.get(tokenPayload, 'user.id');
 
-    if (req.session.user) {
+    if (userId) {
+        logger.debug('JWT payload was fine.', tokenPayload);
+
+        req.session.user = tokenPayload.user;
         users[req.session.user.name] = req.session.user;
+
         return true;
+    } else {
+        logger.error('JWT payload is missing required data.', tokenPayload);
     }
 
     return false;
@@ -313,7 +336,7 @@ exports.authenticate = async (hook, {req, users}) => {
  */
 
 exports.authorize = async (hook, {req, res}) => {
-    logger.debug(hook, 'session', req.session, 'cookies', req.cookies);
+    logger.error(hook, 'session', req.session, 'cookies', req.cookies, 'path', req.path, 'params', req.params, 'query', req.query);
 
     // Parse Topic info from the request and store it in session.
     await _handleTopicInfo(req);
@@ -446,7 +469,7 @@ const _syncAuthorData = async (authorData) => {
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_handlemessage}
  */
 exports.handleMessage = async (hook, {socket, message}) => {
-    logger.debug(hook, 'session', socket.client.request.session, 'message', message);
+    logger.error(hook, 'session', socket.client.request.session, 'message', message);
 
     // All other messages have to go through authorization
     const session = socket.client.request.session;
