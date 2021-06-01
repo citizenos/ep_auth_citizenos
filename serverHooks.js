@@ -306,7 +306,7 @@ exports.preAuthorize = (hook, {req}) => {
 };
 
 exports.authenticate = async (hook, {req, users}) => {
-    logger.error(hook);
+    logger.debug(hook);
 
     if (!users) {
         users = {};
@@ -352,7 +352,7 @@ exports.authenticate = async (hook, {req, users}) => {
  */
 
 exports.authorize = async (hook, {req, res}) => {
-    logger.error(hook, 'session', req.session, 'cookies', req.cookies, 'path', req.path, 'params', req.params, 'query', req.query);
+    logger.debug(hook, 'session', req.session, 'cookies', req.cookies, 'path', req.path, 'params', req.params, 'query', req.query);
 
     // Parse Topic info from the request and store it in session.
     await _handleTopicInfo(req);
@@ -485,7 +485,7 @@ const _syncAuthorData = async (authorData) => {
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_handlemessage}
  */
 exports.handleMessage = async (hook, {socket, message}) => {
-    logger.error(hook, 'session', socket.client.request.session, 'message', message);
+    logger.debug(hook, 'session', socket.client.request.session, 'message', message);
 
     // All other messages have to go through authorization
     const session = socket.client.request.session;
