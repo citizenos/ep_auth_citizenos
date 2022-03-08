@@ -11,6 +11,11 @@
     display: none;
 }
 
+#epCitizenOSUserList.popup.popup-show {
+    top: inherit !important;
+    bottom: 55px;
+}
+
 #epCitizenOSUserList ul {
     list-style-type: none;
 }
