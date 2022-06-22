@@ -10,7 +10,7 @@
     "url": "https://github.com/citizenos/ep_auth_citizenos.git"
   },
   "dependencies": {
-    "async": "3.2.1",
+    "async": "3.2.2",
     "async-stacktrace": "0.0.2",
     "cors": "2.8.5",
     "jsonwebtoken": "8.5.1",
