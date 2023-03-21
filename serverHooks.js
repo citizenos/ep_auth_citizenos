@@ -272,7 +272,7 @@ exports.expressCreateServer = (hook, {app}) => {
     app.get('/ep_auth_citizenos/logout', cors(pluginSettings.api.cors), (req, res) => {
         logger.debug(req.method + ' ' + req.path, 'host', req.get('host'), 'origin', req.get('origin'));
 
-        req.session.destroy((err) => {
+        return req.session.destroy((err) => {
             if (err) {
                 logger.error('Failed to log out', err);
                 return res.status(500).send('Internal server error');
@@ -281,7 +281,7 @@ exports.expressCreateServer = (hook, {app}) => {
             res.clearCookie('token');
             res.clearCookie('express_sid');
 
-            return res.status(200).send('OK');
+            return res.json({message: 'OK'});
         });
     });
 };
