@@ -281,7 +281,7 @@ exports.expressCreateServer = (hook, {app}) => {
             res.clearCookie('token');
             res.clearCookie('express_sid');
 
-            return res.json({message: 'OK'});
+            return res.status(200).json({message: 'OK', status: 200});
         });
     });
 };
