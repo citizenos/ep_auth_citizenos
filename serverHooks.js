@@ -269,8 +269,10 @@ exports.expressCreateServer = (hook, { app }) => {
      *
      * When API and EP were on the same domain, API /logout could unset the cookies, but that is not the case any more.
      */
+
+    let corsOptions = {};
     if (pluginSettings.api.cors) {
-        const corsOptions = pluginSettings.api.cors;
+        corsOptions = pluginSettings.api.cors;
         corsOptions.origin.forEach(function (pattern, i) {
             corsOptions.origin[i] = new RegExp(pattern, 'i');
         });
