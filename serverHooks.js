@@ -88,7 +88,7 @@ const _readJWT = (req) => {
     // Initial request, the Pad is first opened with JWT
     if (token) {
         try {
-            return jwt.verify(token, pluginSettings.jwt.publicKey, {algorithms: pluginSettings.jwt.algorithms});
+            return jwt.verify(token, pluginSettings.jwt.publicKey, { algorithms: pluginSettings.jwt.algorithms });
         } catch (err) {
             if (err.name === 'TokenExpiredError') {
                 // It's ok when for example navigating from timeline view back to Pad.
@@ -258,7 +258,7 @@ exports.loadSettings = async () => {
     }
 };
 
-exports.expressCreateServer = (hook, {app}) => {
+exports.expressCreateServer = (hook, { app }) => {
     logger.debug(hook);
 
     /**
@@ -269,7 +269,13 @@ exports.expressCreateServer = (hook, {app}) => {
      *
      * When API and EP were on the same domain, API /logout could unset the cookies, but that is not the case any more.
      */
-    app.get('/ep_auth_citizenos/logout', cors(pluginSettings.api.cors), (req, res) => {
+    if (pluginSettings.api.cors) {
+        const corsOptions = pluginSettings.api.cors;
+        corsOptions.origin.forEach(function (pattern, i) {
+            corsOptions.origin[i] = new RegExp(pattern, 'i');
+        });
+    }
+    app.get('/ep_auth_citizenos/logout', cors(corsOptions), (req, res) => {
         logger.debug(req.method + ' ' + req.path, 'host', req.get('host'), 'origin', req.get('origin'));
 
         return req.session.destroy((err) => {
@@ -281,12 +287,12 @@ exports.expressCreateServer = (hook, {app}) => {
             res.clearCookie('token');
             res.clearCookie('express_sid');
 
-            return res.status(200).json({message: 'OK', status: 200});
+            return res.json({ message: 'OK', status: 200 });
         });
     });
 };
 
-exports.preAuthorize = (hook, {req}) => {
+exports.preAuthorize = (hook, { req }) => {
     logger.debug(hook);
 
     const staticPathsRE = new RegExp(`^/(?:${[
@@ -305,7 +311,7 @@ exports.preAuthorize = (hook, {req}) => {
     return; // This should delegate access handling to next handlers..
 };
 
-exports.authenticate = async (hook, {req, users}) => {
+exports.authenticate = async (hook, { req, users }) => {
     logger.debug(hook);
 
     if (!users) {
@@ -351,7 +357,7 @@ exports.authenticate = async (hook, {req, users}) => {
  * @see {@link https://etherpad.org/doc/v1.8.13/#index_authorize}
  */
 
-exports.authorize = async (hook, {req, res}) => {
+exports.authorize = async (hook, { req, res }) => {
     logger.debug(hook, 'session', req.session, 'cookies', req.cookies, 'path', req.path, 'params', req.params, 'query', req.query);
 
     // Parse Topic info from the request and store it in session.
@@ -426,7 +432,7 @@ exports.authorize = async (hook, {req, res}) => {
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_authzfailure}
  */
 
-exports.authzFailure = (hook, {res}) => {
+exports.authzFailure = (hook, { res }) => {
     logger.debug(hook);
 
     res.status(403).send('Authentication required');
@@ -448,7 +454,7 @@ exports.authzFailure = (hook, {res}) => {
  *
  * @see https://etherpad.org/doc/v1.8.13/#index_authnfailure
  */
-exports.authnFailure = (hook, {res}) => {
+exports.authnFailure = (hook, { res }) => {
     logger.debug(hook);
 
     res.status(401).send('Authentication required');
@@ -484,7 +490,7 @@ const _syncAuthorData = async (authorData) => {
  *
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_handlemessage}
  */
-exports.handleMessage = async (hook, {socket, message}) => {
+exports.handleMessage = async (hook, { socket, message }) => {
     logger.debug(hook, 'session', socket.client.request.session, 'message', message);
 
     // All other messages have to go through authorization
@@ -501,7 +507,7 @@ exports.handleMessage = async (hook, {socket, message}) => {
 
     if (!topicId) {
         logger.debug('handleMessage', 'Message dropped cause there is no session info');
-        socket.json.send({accessStatus: 'deny'});
+        socket.json.send({ accessStatus: 'deny' });
 
         return [null];
     }
@@ -517,7 +523,7 @@ exports.handleMessage = async (hook, {socket, message}) => {
         } else {
             logger.debug('handleMessage', 'User is not allowed to post to this pad. The level was', level, 'Access denied!');
             // Send deny message, so that UI would throw "no permissions" error
-            socket.json.send({accessStatus: 'deny'});
+            socket.json.send({ accessStatus: 'deny' });
 
             return [null];
         }
