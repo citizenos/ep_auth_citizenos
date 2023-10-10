@@ -12,7 +12,6 @@
   "dependencies": {
     "cors": "2.8.5",
     "jsonwebtoken": "9.0.2",
-    "lodash": "4.17.21",
     "superagent": "8.1.2"
   },
   "devDependencies": {

@@ -3,7 +3,6 @@
 const PLUGIN_NAME = 'ep_auth_citizenos';
 
 const jwt = require('jsonwebtoken');
-const _ = require('lodash');
 const request = require('superagent');
 const cors = require('cors');
 
@@ -151,8 +150,8 @@ const _getTopicPermissions = async (topicId, userId, ignoreCache) => {
 
     // Check for cache, no cache if there is no userId.
     if (cacheKey) {
-        const cacheValue = _.get(permissionCache[cacheKey], 'value');
-        const cacheTimestamp = _.get(permissionCache[cacheKey], 'timestamp');
+        const cacheValue = permissionCache?.[cacheKey]?.value;
+        const cacheTimestamp = permissionCache?.[cacheKey]?.timestamp;
 
         if (cacheTimestamp && (cacheTimestamp + cacheMaxAge > new Date().getTime())) {
             logger.debug('_getTopicPermissions', 'Cache hit for key', cacheKey);
@@ -173,7 +172,7 @@ const _getTopicPermissions = async (topicId, userId, ignoreCache) => {
             .set('X-API-KEY', apiKey)
             .query(query);
 
-        const level = _.get(res, 'body.data.level');
+        const level = res?.body?.data?.level;
         if (!level) {
             logger.error('Authorization API did not return permission level. Access denied!', res.body);
 
@@ -209,17 +208,17 @@ const _getTopicPermissions = async (topicId, userId, ignoreCache) => {
  * @see {@link http://etherpad.org/doc/v1.8.13/#index_loadsettings}
  */
 exports.loadSettings = async () => {
-    const authorizationUrl = _.get(pluginSettings, 'authorization.url');
-    const cacheMaxAge = _.get(pluginSettings, 'authorization.cacheMaxAge');
-    const apiKey = _.get(pluginSettings, 'authorization.apiKey');
+    const authorizationUrl = pluginSettings?.authorization?.url;
+    const cacheMaxAge = pluginSettings?.authorization?.cacheMaxAge;
+    const apiKey = pluginSettings?.authorization?.apiKey;
 
-    if (!authorizationUrl || !cacheMaxAge || !_.isFinite(cacheMaxAge) || !apiKey) {
+    if (!authorizationUrl || !cacheMaxAge || !Number.isFinite(cacheMaxAge) || !apiKey) {
         const invalidConfErr = `Invalid configuration! Missing authorization.url or authorization.cacheMaxAge or authorization.apiKey! Please check EP settings.json.`;
         logger.error(invalidConfErr, pluginSettings);
         throw new Error(invalidConfErr);
     }
 
-    const caCert = _.get(pluginSettings, 'authorization.caCert');
+    const caCert =  pluginSettings?.authorization?.caCert;
     if (caCert) {
         if (caCert.indexOf('-----BEGIN CERTIFICATE-----') !== 0) {
             const invalidCertErr = `Invalid configuration! If you provide authorization.caCert, make sure it looks like a cert.`;
@@ -228,21 +227,21 @@ exports.loadSettings = async () => {
         }
     }
 
-    const jwtPublicKey = _.get(pluginSettings, 'jwt.publicKey');
+    const jwtPublicKey = pluginSettings?.jwt?.publicKey;
     if (!jwtPublicKey || jwtPublicKey.indexOf('PUBLIC KEY') < 0) {
         const missingJWTpubKey = `Invalid configuration! Missing JWT public key (ep_auth_citizenos.jwt.publicKey)! Please check your EP settings.json.`;
         logger.error(missingJWTpubKey, pluginSettings);
         throw new Error(missingJWTpubKey);
     }
 
-    const jwtAlgorithms = _.get(pluginSettings, 'jwt.algorithms');
+    const jwtAlgorithms = pluginSettings?.jwt?.algorithms;
     if (!jwtAlgorithms || !Array.isArray(jwtAlgorithms)) {
         const missingJWTAlgo = `Invalid configuration! Missing JWT algorithm (ep_auth_citizenos.jwt.algorithms)! Please check your EP settings.json`;
         logger.error(missingJWTAlgo, pluginSettings);
         throw new Error(missingJWTAlgo);
     }
 
-    const apiCorsOptions = _.get(pluginSettings, 'api.cors');
+    const apiCorsOptions = pluginSettings?.api?.cors;
 
     if (apiCorsOptions && apiCorsOptions.origin) {
         logger.info('Handling CORS origin as RegExp!');
@@ -330,7 +329,7 @@ exports.authenticate = async (hook, { req, users }) => {
     // See if handover is done using JWT. We get username from there, if it exists.
     // Sets the req.session.user if JWT is valid
     const tokenPayload = _readJWT(req);
-    const userId = _.get(tokenPayload, 'user.id');
+    const userId = tokenPayload?.user?.id;
 
     if (userId) {
         logger.debug('JWT payload was fine.', tokenPayload);
@@ -367,8 +366,8 @@ exports.authorize = async (hook, { req, res }) => {
 
     // Handover has completed and from here on we check for permissions by calling Citizen OS API.
     // This is to ensure that if permissions change in Citizen OS system, we act accordingly in EP
-    const topicId = _.get(req.session, 'topic.id');
-    const userId = _.get(req.session, 'user.id');
+    const topicId = req.session?.topic?.id;
+    const userId = req.session?.user?.id;
     // userId may be null, it's ok for a public Topic
     if (!topicId) {
         return false;
@@ -497,8 +496,8 @@ exports.handleMessage = async (hook, { socket, message }) => {
 
     // All other messages have to go through authorization
     const session = socket.client.request.session;
-    const topicId = _.get(session, 'topic.id');
-    const userId = _.get(session, 'user.id');
+    const topicId = session?.topic?.id;
+    const userId = session?.user?.id;
 
     // Disable editing user info
     if (message.type === 'COLLABROOM' && message.data.type === 'USERINFO_UPDATE') {
@@ -548,7 +547,7 @@ exports.userLeave = (hook, session) => {
     logger.debug(hook, session, session.id);
 
     // Delete the token from DB
-    const token = _.get(session, 'auth.token');
+    const token = session?.auth?.token;
     if (token) {
         // Cleanup DB from the token,
         // as we generate a new one on each authorization, there would be a lot
