@@ -10,23 +10,21 @@
     "url": "https://github.com/citizenos/ep_auth_citizenos.git"
   },
   "dependencies": {
-    "async": "3.2.1",
-    "async-stacktrace": "0.0.2",
     "cors": "2.8.5",
-    "jsonwebtoken": "8.5.1",
+    "jsonwebtoken": "9.0.2",
     "lodash": "4.17.21",
-    "superagent": "6.1.0"
+    "superagent": "8.1.2"
   },
   "devDependencies": {
-    "grunt": "1.4.1",
-    "grunt-eslint": "23.0.0",
-    "husky": "7.0.1",
-    "eslint": "^7.32.0",
-    "eslint-config-etherpad": "^2.0.0",
-    "eslint-plugin-mocha": "^9.0.0",
+    "grunt": "1.6.1",
+    "grunt-eslint": "24.3.0",
+    "husky": "8.0.3",
+    "eslint": "8.51.0",
+    "eslint-config-etherpad": "3.0.22",
+    "eslint-plugin-mocha": "^10.2.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-promise": "^5.1.0",
+    "eslint-plugin-promise": "^6.1.1",
     "request": "*"
   },
   "eslintConfig": {
