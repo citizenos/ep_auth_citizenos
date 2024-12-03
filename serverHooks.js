@@ -243,7 +243,7 @@ exports.loadSettings = async () => {
 
     const apiCorsOptions = pluginSettings?.api?.cors;
 
-    if (apiCorsOptions && apiCorsOptions.origin) {
+    if (apiCorsOptions?.origin) {
         logger.info('Handling CORS origin as RegExp!');
 
         if (!Array.isArray(apiCorsOptions.origin)) {
@@ -303,6 +303,8 @@ exports.preAuthorize = (hook, { req }) => {
         'javascripts/.*',
         'locales\\.json',
         'locales/.*\\.json',
+        'manifest\\.json',
+        'padbootstrap-.*\\.min\\.js',
         'pluginfw/.*',
         'static/.*'
     ].join('|')})$`);
@@ -362,7 +364,7 @@ exports.authorize = async (hook, { req, res }) => {
     logger.debug(hook, 'session', req.session, 'cookies', req.cookies, 'path', req.path, 'params', req.params, 'query', req.query);
 
     // Parse Topic info from the request and store it in session.
-    await _handleTopicInfo(req);
+    await handleTopicInfo(req);
 
     // Handover has completed and from here on we check for permissions by calling Citizen OS API.
     // This is to ensure that if permissions change in Citizen OS system, we act accordingly in EP

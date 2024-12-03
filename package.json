@@ -12,18 +12,18 @@
   "dependencies": {
     "cors": "2.8.5",
     "jsonwebtoken": "9.0.2",
-    "superagent": "8.1.2"
+    "superagent": "10.1.1"
   },
   "devDependencies": {
     "grunt": "1.6.1",
-    "grunt-eslint": "24.3.0",
-    "husky": "8.0.3",
-    "eslint": "8.51.0",
-    "eslint-config-etherpad": "3.0.22",
-    "eslint-plugin-mocha": "^10.2.0",
+    "grunt-eslint": "25.0.0",
+    "husky": "9.1.7",
+    "eslint": "9.16.0",
+    "eslint-config-etherpad": "4.0.4",
+    "eslint-plugin-mocha": "^10.5.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-promise": "^7.2.1",
     "request": "*"
   },
   "eslintConfig": {
