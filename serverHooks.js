@@ -6,13 +6,15 @@ const jwt = require('jsonwebtoken');
 const request = require('superagent');
 const cors = require('cors');
 
-const settings = require('ep_etherpad-lite/node/utils/Settings');
+const settingsRaw = require('ep_etherpad-lite/node/utils/Settings');
+const settings = settingsRaw.default || settingsRaw;
 const pluginSettings = settings[PLUGIN_NAME];
 const db = require('ep_etherpad-lite/node/db/DB').db;
 const API = require('ep_etherpad-lite/node/db/API');
 const authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 const logger = require('ep_etherpad-lite/node_modules/log4js').getLogger(PLUGIN_NAME);
-const randomString = require('ep_etherpad-lite/node/utils/randomstring');
+const rsRaw = require('ep_etherpad-lite/node/utils/randomstring');
+const randomString = rsRaw.default || rsRaw;
 
 // Permission cache
 const permissionCache = {};
